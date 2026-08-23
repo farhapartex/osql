@@ -1,5 +1,7 @@
 package query
 
+import "strings"
+
 type TokenKind int
 
 const (
@@ -31,4 +33,8 @@ type Token struct {
 	Kind  TokenKind
 	Value string
 	Pos   int
+}
+
+func (t Token) IsKeyword(keyword string) bool {
+	return t.Kind == TokenIdent && strings.EqualFold(t.Value, keyword)
 }
