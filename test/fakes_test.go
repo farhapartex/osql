@@ -173,3 +173,11 @@ var (
 	_ state.Store           = (*fakeStore)(nil)
 	_ state.History         = (*fakeHistory)(nil)
 )
+
+type failingReader struct {
+	err error
+}
+
+func (f *failingReader) ReadLine(prompt string) (string, error) { return "", f.err }
+func (f *failingReader) AddHistory(line string)                 {}
+func (f *failingReader) Close() error                           { return nil }
