@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/farhapartex/osql/internal/buildinfo"
+	"github.com/farhapartex/osql/internal/cli"
 	"github.com/farhapartex/osql/internal/reader"
 	"github.com/farhapartex/osql/internal/shell"
 	"github.com/farhapartex/osql/internal/state"
@@ -15,27 +17,50 @@ var (
 )
 
 func main() {
-	if err := run(); err != nil {
+	if err := run(os.Args[1:]); err != nil {
 		fmt.Fprintln(os.Stderr, "osql:", err)
 		os.Exit(1)
 	}
 }
 
-func run() error {
+func run(args []string) error {
+	opts, err := cli.Parse(args)
+	if err != nil {
+		return err
+	}
+
+	switch opts.Command {
+	case cli.CommandVersion:
+		fmt.Fprintln(os.Stdout, buildinfo.String(version, commit))
+		return nil
+	case cli.CommandHelp:
+		fmt.Fprintln(os.Stdout, cli.Usage)
+		return nil
+	}
+
 	root, err := state.DefaultRoot()
 	if err != nil {
 		return err
 	}
 
 	store := state.New(state.Options{
-		Root:    root,
-		Version: version,
-		Commit:  commit,
+		Root:      root,
+		Version:   version,
+		Commit:    commit,
+		NoHistory: opts.NoHistory,
 	})
 	if err := store.Ensure(); err != nil {
 		return err
 	}
 	defer store.Close()
+
+	if opts.Command == cli.CommandInit {
+		if err := store.WriteSystemInfo(opts.Reinit); err != nil {
+			return err
+		}
+		fmt.Fprintf(os.Stdout, "ready: %s\n", store.Root())
+		return nil
+	}
 
 	history, err := store.History()
 	if err != nil {

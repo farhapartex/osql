@@ -30,7 +30,7 @@ func runShell(t *testing.T, input string, hist reader.HistoryAppender) string {
 func TestShellGreetingCarriesVersion(t *testing.T) {
 	app := shell.New(shell.Config{Version: "v0.1.0", Commit: "abc1234"})
 
-	want := "osql v0.1.0 (abc1234) — Ctrl+D to exit."
+	want := "osql v0.1.0 (abc1234) — type \"help\" for commands, \"exit\" to quit."
 	if got := app.Greeting(); got != want {
 		t.Errorf("Greeting() = %q, want %q", got, want)
 	}
@@ -39,7 +39,7 @@ func TestShellGreetingCarriesVersion(t *testing.T) {
 func TestShellGreetingFallsBackForUnstampedBuild(t *testing.T) {
 	app := shell.New(shell.Config{})
 
-	want := "osql dev (none) — Ctrl+D to exit."
+	want := "osql dev (none) — type \"help\" for commands, \"exit\" to quit."
 	if got := app.Greeting(); got != want {
 		t.Errorf("Greeting() = %q, want %q", got, want)
 	}
@@ -54,7 +54,7 @@ func TestShellPromptIsOsqlAngle(t *testing.T) {
 func TestShellRunGreetsThenPromptsThenExitsOnEOF(t *testing.T) {
 	got := runShell(t, "", nil)
 
-	if !strings.HasPrefix(got, "osql v0.1.0 (abc1234) — Ctrl+D to exit.\n") {
+	if !strings.HasPrefix(got, "osql v0.1.0 (abc1234) — type \"help\" for commands, \"exit\" to quit.\n") {
 		t.Errorf("output did not start with the greeting:\n%q", got)
 	}
 	if !strings.Contains(got, shell.Prompt) {
