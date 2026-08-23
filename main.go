@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
+	"os"
 
-	"github.com/farhapartex/osql/internal/buildinfo"
+	"github.com/farhapartex/osql/internal/shell"
 )
 
 var (
@@ -12,5 +13,15 @@ var (
 )
 
 func main() {
-	fmt.Println(buildinfo.String(version, commit))
+	app := shell.New(shell.Config{
+		Out:     os.Stdout,
+		Err:     os.Stderr,
+		Version: version,
+		Commit:  commit,
+	})
+
+	if err := app.Run(); err != nil {
+		fmt.Fprintln(os.Stderr, "osql:", err)
+		os.Exit(1)
+	}
 }
