@@ -8,14 +8,22 @@ import (
 	"strings"
 
 	"github.com/farhapartex/osql/internal/buildinfo"
+	"github.com/farhapartex/osql/internal/oerr"
 )
 
-const Prompt = "osql > "
+const (
+	Prompt    = "osql > "
+	QueryVerb = "select"
+)
 
-var ErrNoReader = errors.New("no line reader configured")
+var (
+	ErrNoReader = errors.New("no line reader configured")
+	errNoStore  = errors.New("no state store configured")
+)
 
 type Shell struct {
-	cfg Config
+	cfg      Config
+	builtins *BuiltinRegistry
 }
 
 func New(cfg Config) *Shell {
@@ -25,11 +33,19 @@ func New(cfg Config) *Shell {
 	if cfg.Err == nil {
 		cfg.Err = os.Stderr
 	}
-	return &Shell{cfg: cfg}
+	return &Shell{cfg: cfg, builtins: DefaultBuiltins()}
+}
+
+func (s *Shell) Builtins() *BuiltinRegistry {
+	return s.builtins
 }
 
 func (s *Shell) Greeting() string {
-	return fmt.Sprintf("%s — Ctrl+D to exit.", buildinfo.String(s.cfg.Version, s.cfg.Commit))
+	return fmt.Sprintf("%s — type \"help\" for commands, \"exit\" to quit.", buildinfo.String(s.cfg.Version, s.cfg.Commit))
+}
+
+func (s *Shell) KnownVerbs() []string {
+	return append([]string{QueryVerb}, s.builtins.Names()...)
 }
 
 func (s *Shell) Run() error {
@@ -55,10 +71,33 @@ func (s *Shell) Run() error {
 		}
 
 		s.cfg.Reader.AddHistory(line)
-		s.dispatch(line)
+
+		if err := s.Dispatch(line); err != nil {
+			if errors.Is(err, ErrExit) {
+				return nil
+			}
+			fmt.Fprintln(s.cfg.Err, err)
+		}
 	}
 }
 
-func (s *Shell) dispatch(line string) {
-	fmt.Fprintln(s.cfg.Out, line)
+func (s *Shell) Dispatch(line string) error {
+	line = strings.TrimSuffix(strings.TrimSpace(line), ";")
+
+	fields := strings.Fields(line)
+	if len(fields) == 0 {
+		return nil
+	}
+
+	name := strings.ToLower(fields[0])
+
+	if b, ok := s.builtins.Lookup(name); ok {
+		return b.Run(s, fields[1:])
+	}
+	if name == QueryVerb {
+		fmt.Fprintln(s.cfg.Out, line)
+		return nil
+	}
+
+	return oerr.UnknownVerb(fields[0], s.KnownVerbs())
 }
