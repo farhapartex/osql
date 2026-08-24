@@ -13,6 +13,7 @@ const (
 	KindPathIsFile
 	KindNoPermission
 	KindUnknownVerb
+	KindMissingTarget
 	KindSingularTarget
 	KindUnknownTarget
 	KindMissingFrom
@@ -21,6 +22,8 @@ const (
 	KindWrongOperator
 	KindCountChildOnFiles
 	KindCountChildNonNumeric
+	KindUnexpectedInput
+	KindIncompleteQuery
 	KindUnclosedQuote
 )
 
@@ -29,6 +32,7 @@ var kindNames = map[Kind]string{
 	KindPathIsFile:           "path_is_file",
 	KindNoPermission:         "no_permission",
 	KindUnknownVerb:          "unknown_verb",
+	KindMissingTarget:        "missing_target",
 	KindSingularTarget:       "singular_target",
 	KindUnknownTarget:        "unknown_target",
 	KindMissingFrom:          "missing_from",
@@ -37,6 +41,8 @@ var kindNames = map[Kind]string{
 	KindWrongOperator:        "wrong_operator",
 	KindCountChildOnFiles:    "count_child_on_files",
 	KindCountChildNonNumeric: "count_child_non_numeric",
+	KindUnexpectedInput:      "unexpected_input",
+	KindIncompleteQuery:      "incomplete_query",
 	KindUnclosedQuote:        "unclosed_quote",
 }
 
@@ -85,6 +91,18 @@ func UnknownVerb(got string, known []string) *Error {
 		return newError(KindUnknownVerb, "I don't know how to \"%s\". Did you mean \"%s\"?", got, suggestion)
 	}
 	return newError(KindUnknownVerb, "I don't know how to \"%s\".", got)
+}
+
+func MissingTarget() *Error {
+	return newError(KindMissingTarget, "I need \"files\", \"folders\", or \"all\" after \"select\" — for example: select files from 'Documents'")
+}
+
+func UnexpectedInput(got string) *Error {
+	return newError(KindUnexpectedInput, "I don't understand \"%s\" here. Try: select files from 'Documents'", got)
+}
+
+func IncompleteAfter(keyword string) *Error {
+	return newError(KindIncompleteQuery, "The query ends after \"%s\". I need more — for example: select files from 'Documents' where name = 'notes.txt'", keyword)
 }
 
 func SingularTarget(got string) *Error {

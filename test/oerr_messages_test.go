@@ -33,6 +33,21 @@ func TestErrorMessagesMatchSpec(t *testing.T) {
 			`I don't know how to "slect". Did you mean "select"?`,
 		},
 		{
+			"missing target",
+			oerr.MissingTarget(),
+			`I need "files", "folders", or "all" after "select" — for example: select files from 'Documents'`,
+		},
+		{
+			"unexpected input",
+			oerr.UnexpectedInput("junk"),
+			`I don't understand "junk" here. Try: select files from 'Documents'`,
+		},
+		{
+			"query ends early",
+			oerr.IncompleteAfter("where"),
+			`The query ends after "where". I need more — for example: select files from 'Documents' where name = 'notes.txt'`,
+		},
+		{
 			"singular target",
 			oerr.SingularTarget("file"),
 			`Use "files", not "file" — for example: select files from 'Documents'`,
@@ -180,6 +195,9 @@ func TestErrorsCarryTheirKind(t *testing.T) {
 		{oerr.PathIsFile("x"), oerr.KindPathIsFile},
 		{oerr.NoPermission("x"), oerr.KindNoPermission},
 		{oerr.UnknownVerb("x", nil), oerr.KindUnknownVerb},
+		{oerr.MissingTarget(), oerr.KindMissingTarget},
+		{oerr.UnexpectedInput("junk"), oerr.KindUnexpectedInput},
+		{oerr.IncompleteAfter("where"), oerr.KindIncompleteQuery},
 		{oerr.SingularTarget("file"), oerr.KindSingularTarget},
 		{oerr.UnknownTarget("x"), oerr.KindUnknownTarget},
 		{oerr.MissingFrom(), oerr.KindMissingFrom},
