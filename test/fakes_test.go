@@ -84,14 +84,23 @@ func (s *sliceSink) Push(r engine.Row) error {
 }
 
 type fakeFieldExtractor struct {
-	field string
-	cost  int
-	value engine.Value
-	err   error
+	field       string
+	cost        int
+	allowedOps  []string
+	foldersOnly bool
+	value       engine.Value
+	err         error
 }
 
-func (f *fakeFieldExtractor) Field() string { return f.field }
-func (f *fakeFieldExtractor) Cost() int     { return f.cost }
+func (f *fakeFieldExtractor) Field() string               { return f.field }
+func (f *fakeFieldExtractor) Cost() int                   { return f.cost }
+func (f *fakeFieldExtractor) AllowedOperators() []string  { return f.allowedOps }
+func (f *fakeFieldExtractor) AppliesTo(query.Target) bool { return !f.foldersOnly }
+
+func (f *fakeFieldExtractor) NormalizeValue(v string) (engine.Value, error) {
+	return engine.Value{Text: v}, nil
+}
+
 func (f *fakeFieldExtractor) Extract(e engine.Entry) (engine.Value, error) {
 	return f.value, f.err
 }

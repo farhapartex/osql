@@ -42,6 +42,9 @@ type Executor interface {
 type FieldExtractor interface {
 	Field() string
 	Cost() int
+	AllowedOperators() []string
+	AppliesTo(query.Target) bool
+	NormalizeValue(string) (Value, error)
 	Extract(Entry) (Value, error)
 }
 
