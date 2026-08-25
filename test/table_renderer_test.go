@@ -198,3 +198,21 @@ func TestBothRenderersSatisfyTheInterface(t *testing.T) {
 		}
 	}
 }
+
+func TestLinesRendererOnEmptyAndSingleRow(t *testing.T) {
+	buf := &bytes.Buffer{}
+	if err := output.NewLines().Render(buf, nil); err != nil {
+		t.Fatalf("Render(nil) error = %v", err)
+	}
+	if buf.Len() != 0 {
+		t.Errorf("empty result wrote %q, want nothing", buf.String())
+	}
+
+	buf.Reset()
+	if err := output.NewLines().Render(buf, []engine.Row{{Name: "only.txt"}}); err != nil {
+		t.Fatal(err)
+	}
+	if buf.String() != "only.txt\n" {
+		t.Errorf("single row = %q", buf.String())
+	}
+}

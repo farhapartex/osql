@@ -49,6 +49,14 @@ func TestComparators(t *testing.T) {
 		{engine.LessOp{}, text("a"), text("b"), false},
 		{engine.GreaterOp{}, text("b"), text("a"), false},
 		{engine.LessOp{}, num(1), text("2"), false},
+		{engine.LessEqualOp{}, text("a"), text("a"), false},
+		{engine.LessEqualOp{}, num(1), text("2"), false},
+		{engine.LessEqualOp{}, text("1"), num(2), false},
+		{engine.GreaterEqualOp{}, text("a"), text("a"), false},
+		{engine.GreaterEqualOp{}, num(2), text("1"), false},
+		{engine.GreaterEqualOp{}, text("2"), num(1), false},
+		{engine.GreaterOp{}, num(2), text("1"), false},
+		{engine.LessOp{}, text("1"), num(2), false},
 	}
 
 	for _, tt := range tests {
