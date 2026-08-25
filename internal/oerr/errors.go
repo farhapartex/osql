@@ -14,6 +14,13 @@ const (
 	KindPathIsFolder
 	KindFileMissing
 	KindBinaryFile
+	KindAlreadyExists
+	KindDataOnFolder
+	KindMissingNewTarget
+	KindSingularNewTarget
+	KindMissingNewPath
+	KindMissingDataValue
+	KindCannotCreate
 	KindCannotRead
 	KindNoPermission
 	KindOutsideRoot
@@ -41,6 +48,13 @@ var kindNames = map[Kind]string{
 	KindPathIsFolder:         "path_is_folder",
 	KindFileMissing:          "file_missing",
 	KindBinaryFile:           "binary_file",
+	KindAlreadyExists:        "already_exists",
+	KindDataOnFolder:         "data_on_folder",
+	KindMissingNewTarget:     "missing_new_target",
+	KindSingularNewTarget:    "singular_new_target",
+	KindMissingNewPath:       "missing_new_path",
+	KindMissingDataValue:     "missing_data_value",
+	KindCannotCreate:         "cannot_create",
 	KindCannotRead:           "cannot_read",
 	KindNoPermission:         "no_permission",
 	KindOutsideRoot:          "outside_root",
@@ -108,6 +122,49 @@ func FileMissing(path string) *Error {
 
 func BinaryFile(path string) *Error {
 	return newError(KindBinaryFile, "'%s' looks like a binary file, so I won't print it. open only shows text.", path)
+}
+
+func AlreadyExists(path string) *Error {
+	return newError(KindAlreadyExists, "'%s' already exists. Nothing was changed.", path)
+}
+
+func DataOnFolder() *Error {
+	return newError(KindDataOnFolder, "A folder can't hold data. Drop the data part, or use: new file 'notes.txt' data='hello'")
+}
+
+func MissingNewTarget(got string) *Error {
+	if got == "" {
+		return newError(KindMissingNewTarget, "I need \"file\" or \"folder\" after \"new\" — for example: new file 'notes.txt'")
+	}
+	return newError(KindMissingNewTarget, "I can make a \"file\" or a \"folder\" — not \"%s\".", got)
+}
+
+func SingularNewTarget(got string) *Error {
+	singular := singularOf(got)
+	return newError(KindSingularNewTarget, "Use \"%s\", not \"%s\" — you make one thing at a time: new %s '%s'", singular, got, singular, exampleNameFor(singular))
+}
+
+func MissingNewPath(kind string) *Error {
+	return newError(KindMissingNewPath, "I need a path after \"new %s\" — for example: new %s '%s'", kind, kind, exampleNameFor(kind))
+}
+
+func exampleNameFor(kind string) string {
+	if kind == "folder" {
+		return "reports"
+	}
+	return "notes.txt"
+}
+
+func MissingDataValue() *Error {
+	return newError(KindMissingDataValue, "data needs a value in quotes — for example: data='hello there'")
+}
+
+func singularOf(plural string) string {
+	return strings.TrimSuffix(plural, "s")
+}
+
+func CannotCreate(path string, reason string) *Error {
+	return newError(KindCannotCreate, "I couldn't create '%s': %s", path, reason)
 }
 
 func CannotRead(path string) *Error {

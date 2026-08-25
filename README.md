@@ -31,6 +31,7 @@ files from 'Documents'
 folders from 'Documents' where count(child) > 5
 count(all) from 'Documents'
 open 'Documents/notes.txt'
+new file 'Documents/notes.txt' data='hello'
 ```
 
 Press `Ctrl+D` or type `exit` to leave.
@@ -44,6 +45,7 @@ Press `Ctrl+D` or type `exit` to leave.
 | [Filtering](docs/filtering.md) | The `where` clause: names, types, and patterns |
 | [Counting](docs/counting.md) | Getting a number instead of a list |
 | [Opening files](docs/opening.md) | Printing what is inside a text file |
+| [Creating](docs/creating.md) | Making new files and folders |
 | [Output](docs/output.md) | Reading the table and the size column |
 | [Shell and flags](docs/shell.md) | Built-in commands and command-line options |
 | [Error messages](docs/errors.md) | What each message means and how to fix it |
@@ -52,8 +54,8 @@ Press `Ctrl+D` or type `exit` to leave.
 
 ## Status
 
-Early days, and honest about it. Listing, filtering, and counting work. Deleting
-and creating files do not exist yet, and the shell has no arrow-key history —
-see [known limits](docs/shell.md#known-limits).
+Early days, and honest about it. Listing, filtering, counting, reading, and
+creating all work. Deleting does not exist yet, and the shell has no arrow-key
+history — see [known limits](docs/shell.md#known-limits).
 
 macOS and Linux only.

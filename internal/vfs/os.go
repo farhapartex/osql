@@ -1,8 +1,14 @@
 package vfs
 
 import (
+	"io"
 	"io/fs"
 	"os"
+)
+
+const (
+	newFileMode os.FileMode = 0o644
+	newDirMode  os.FileMode = 0o755
 )
 
 type OSFileSystem struct {
@@ -36,4 +42,18 @@ func (f *OSFileSystem) ReadDir(name string) ([]fs.DirEntry, error) {
 
 func (f *OSFileSystem) OSPath(fsPath string) string {
 	return OSPath(f.root, fsPath)
+}
+
+func (f *OSFileSystem) Create(name string) (io.WriteCloser, error) {
+	if !fs.ValidPath(name) {
+		return nil, ErrInvalidPath
+	}
+	return os.OpenFile(f.OSPath(name), os.O_WRONLY|os.O_CREATE|os.O_EXCL, newFileMode)
+}
+
+func (f *OSFileSystem) MkdirAll(name string) error {
+	if !fs.ValidPath(name) {
+		return ErrInvalidPath
+	}
+	return os.MkdirAll(f.OSPath(name), newDirMode)
 }

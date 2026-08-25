@@ -210,7 +210,7 @@ main() {
 ' 'type "help" for commands'
   expect_shell_contains "help lists builtins" 'help
 exit
-' "clear" "exit" "history" "files" "count(" "open"
+' "clear" "exit" "history" "files" "count(" "open" "new"
   expect_shell_contains "blank lines are ignored" '
 
 files from '"'"'docs'"'"'
@@ -314,6 +314,35 @@ exit
     pass "empty file prints nothing"
   else
     fail "empty file prints nothing" "expected no output" "$empty_out"
+  fi
+
+  section "new"
+  expect_line "creates a file" "new file 'made.txt'" "Created 'made.txt'"
+  expect_contains "the file is really there" "files from '/' where name = 'made.txt'" "made.txt"
+  expect_line "creates a folder" "new folder 'made_dir'" "Created 'made_dir'"
+  expect_contains "the folder is really there" "folders from '/' where name = 'made_dir'" "made_dir"
+  expect_line "writes data" "new file 'greet.txt' data='hello hello line testing'" "Created 'greet.txt'"
+  expect_line "data is readable back" "open 'greet.txt'" "hello hello line testing"
+  expect_contains "creates missing parents" "new file 'deep/one/two/leaf.txt' data='way down here'" "Created 'deep/one/two/leaf.txt'" "also created:"
+  expect_contains "reports which parents it made" "new file 'deep2/a/b.txt'" "deep2"
+  expect_line "nested file is readable" "open 'deep/one/two/leaf.txt'" "way down here"
+  expect_contains "existing parents are not reported" "new file 'deep/one/two/second.txt'" "Created 'deep/one/two/second.txt'"
+  expect_absent "no also-created line when parents exist" "new file 'deep/one/two/third.txt'" "also created:"
+  expect_line "refuses an existing file" "new file 'made.txt'" "'made.txt' already exists. Nothing was changed."
+  expect_line "refuses an existing folder" "new folder 'made_dir'" "'made_dir' already exists. Nothing was changed."
+  expect_line "data never overwrites" "new file 'greet.txt' data='destroyed'" "'greet.txt' already exists. Nothing was changed."
+  expect_line "original content survives" "open 'greet.txt'" "hello hello line testing"
+  expect_line "plural is corrected" "new files 'x.txt'" "Use \"file\", not \"files\" — you make one thing at a time: new file 'notes.txt'"
+  expect_line "unknown kind" "new thing 'x'" 'I can make a "file" or a "folder" — not "thing".'
+  expect_line "needs a kind" "new" 'I need "file" or "folder" after "new" — for example: new file '"'"'notes.txt'"'"''
+  expect_line "needs a path" "new file" 'I need a path after "new file" — for example: new file '"'"'notes.txt'"'"''
+  expect_line "data needs a value" "new file 'x.txt' data=" "data needs a value in quotes — for example: data='hello there'"
+  expect_line "folders take no data" "new folder 'y' data='z'" "A folder can't hold data. Drop the data part, or use: new file 'notes.txt' data='hello'"
+  expect_line "cannot create outside the root" "new file '../escape.txt'" "I can only look inside '$HOME'. '../escape.txt' points outside it."
+  if [ -e "$(dirname "$HOME")/escape.txt" ]; then
+    fail "nothing is created outside the root" "escape.txt exists above HOME"
+  else
+    pass "nothing is created outside the root"
   fi
 
   section "outcomes"

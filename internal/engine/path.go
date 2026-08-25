@@ -94,6 +94,24 @@ func (r *PathResolver) ResolveFile(input string) (Resolved, error) {
 	return Resolved{Input: input, Absolute: absolute, FSPath: fsPath}, nil
 }
 
+func (r *PathResolver) ResolveNew(input string) (Resolved, error) {
+	absolute := r.Expand(input)
+
+	if absolute == r.root {
+		return Resolved{}, oerr.AlreadyExists(input)
+	}
+
+	fsPath, err := vfs.FSPathUnder(r.root, absolute)
+	if err != nil {
+		if errors.Is(err, vfs.ErrOutsideRoot) {
+			return Resolved{}, oerr.OutsideRoot(input, r.root)
+		}
+		return Resolved{}, oerr.CannotCreate(input, "that path is not usable")
+	}
+
+	return Resolved{Input: input, Absolute: absolute, FSPath: fsPath}, nil
+}
+
 func classifyStatError(input string, err error) error {
 	switch {
 	case errors.Is(err, fs.ErrPermission):

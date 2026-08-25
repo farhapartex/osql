@@ -17,4 +17,10 @@ type Remover interface {
 
 type Creator interface {
 	Create(name string) (io.WriteCloser, error)
+	MkdirAll(name string) error
+}
+
+type WritableFileSystem interface {
+	FileSystem
+	Creator
 }
