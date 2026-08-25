@@ -38,6 +38,9 @@ func New(cfg Config) *Shell {
 	if cfg.Renderer == nil {
 		cfg.Renderer = output.NewTable()
 	}
+	if cfg.CountRenderer == nil {
+		cfg.CountRenderer = output.NewCount()
+	}
 	return &Shell{cfg: cfg, builtins: DefaultBuiltins()}
 }
 
@@ -109,6 +112,10 @@ func (s *Shell) runQuery(line string) error {
 	sink := &engine.SliceSink{}
 	if err := executor.Execute(context.Background(), stmt, sink); err != nil {
 		return err
+	}
+
+	if stmt.Verb == query.VerbCount {
+		return s.cfg.CountRenderer.Render(s.cfg.Out, sink.Rows)
 	}
 
 	if len(sink.Rows) == 0 {
