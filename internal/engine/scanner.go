@@ -19,6 +19,7 @@ type ScanOptions struct {
 	Target   query.Target
 	Matchers []Matcher
 	Skip     SkipList
+	OmitInfo bool
 }
 
 type Scanner struct {
@@ -65,7 +66,7 @@ func (s *Scanner) Scan(ctx context.Context, root Resolved, opts ScanOptions, sin
 				return err
 			}
 			if ok {
-				if err := pushRow(sink, relative, entry); err != nil {
+				if err := pushRow(sink, relative, entry, opts.OmitInfo); err != nil {
 					if errors.Is(err, ErrStopWalk) {
 						stopped = true
 						return fs.SkipAll
@@ -90,7 +91,7 @@ func (s *Scanner) Scan(ctx context.Context, root Resolved, opts ScanOptions, sin
 	return nil
 }
 
-func pushRow(sink RowSink, name string, entry fs.DirEntry) error {
+func pushRow(sink RowSink, name string, entry fs.DirEntry, omitInfo bool) error {
 	isDir := entry.IsDir()
 
 	row := Row{Name: name, IsDir: isDir}
@@ -98,10 +99,11 @@ func pushRow(sink RowSink, name string, entry fs.DirEntry) error {
 		row.Ext = ExtensionOf(entry.Name())
 	}
 
-	info, err := entry.Info()
-	if err == nil {
-		row.Size = info.Size()
-		row.Modified = info.ModTime()
+	if !omitInfo {
+		if info, err := entry.Info(); err == nil {
+			row.Size = info.Size()
+			row.Modified = info.ModTime()
+		}
 	}
 
 	return sink.Push(row)
