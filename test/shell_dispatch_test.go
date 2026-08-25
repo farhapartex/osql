@@ -13,18 +13,18 @@ import (
 
 func TestDispatchRoutesQueryVerb(t *testing.T) {
 	out := &bytes.Buffer{}
-	app := shell.New(shell.Config{Out: out, Err: out})
+	app := shell.New(withPipeline(t, shell.Config{Out: out, Err: out}, pipelineFS()))
 
-	if err := app.Dispatch("select files from 'Documents'"); err != nil {
+	if err := app.Dispatch("select files from 'work'"); err != nil {
 		t.Fatalf("Dispatch() error = %v", err)
 	}
-	if !strings.Contains(out.String(), "select files from 'Documents'") {
-		t.Errorf("query line not handled: %q", out.String())
+	if !strings.Contains(out.String(), "notes.txt") {
+		t.Errorf("query produced no results: %q", out.String())
 	}
 }
 
 func TestDispatchIsCaseInsensitiveOnKeywords(t *testing.T) {
-	tests := []string{"HELP", "Help", "hELp", "SELECT files from '.'", "EXIT"}
+	tests := []string{"HELP", "Help", "hELp", "SELECT files from 'work'", "EXIT"}
 
 	for _, line := range tests {
 		t.Run(line, func(t *testing.T) {
@@ -148,16 +148,14 @@ func TestRunWritesErrorsToErrNotOut(t *testing.T) {
 func TestRunSurvivesBadCommandAndKeepsPrompting(t *testing.T) {
 	out := &bytes.Buffer{}
 	errBuf := &bytes.Buffer{}
-	app := shell.New(shell.Config{
-		Reader: reader.NewBasic(strings.NewReader("slect x\nselect files from '.'\nexit\n"), out, nil),
-		Out:    out,
-		Err:    errBuf,
-	})
+	cfg := withPipeline(t, shell.Config{Out: out, Err: errBuf}, pipelineFS())
+	cfg.Reader = reader.NewBasic(strings.NewReader("slect x\nselect files from 'work'\nexit\n"), out, nil)
 
+	app := shell.New(cfg)
 	if err := app.Run(); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
-	if !strings.Contains(out.String(), "select files from '.'") {
+	if !strings.Contains(out.String(), "notes.txt") {
 		t.Error("shell did not continue after a bad command")
 	}
 	if got := strings.Count(out.String(), shell.Prompt); got != 3 {
