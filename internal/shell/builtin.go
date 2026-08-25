@@ -101,7 +101,7 @@ func builtinClear(s *Shell, args []string) error {
 
 func builtinHelp(s *Shell, args []string) error {
 	w := tabwriter.NewWriter(s.cfg.Out, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "select ...\tquery the filesystem, for example: select files from 'Documents'")
+	fmt.Fprintln(w, "files|folders|all from '<path>'\tquery the filesystem, for example: files from 'Documents'")
 	for _, b := range s.builtins.All() {
 		fmt.Fprintf(w, "%s\t%s\n", b.Name, b.Summary)
 	}

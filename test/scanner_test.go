@@ -42,7 +42,7 @@ func scanNames(t *testing.T, fsys fstest.MapFS, path string, opts engine.ScanOpt
 	t.Helper()
 
 	vf := &fakeFileSystem{fsys: fsys}
-	resolver := engine.NewPathResolver(vf, "/", "/home", "/")
+	resolver := engine.NewPathResolver(vf, "/")
 	resolved, err := resolver.Resolve("/" + path)
 	if err != nil {
 		t.Fatalf("Resolve(%q) error = %v", path, err)
@@ -235,7 +235,7 @@ func TestScanAppliesMatchers(t *testing.T) {
 func TestScanPopulatesRowFields(t *testing.T) {
 	fsys := treeFS()
 	vf := &fakeFileSystem{fsys: fsys}
-	resolver := engine.NewPathResolver(vf, "/", "/home", "/")
+	resolver := engine.NewPathResolver(vf, "/")
 	resolved, _ := resolver.Resolve("/root")
 
 	sink := &sliceSink{}
@@ -284,7 +284,7 @@ func TestScanPopulatesRowFields(t *testing.T) {
 func TestScanStopsOnSinkLimit(t *testing.T) {
 	fsys := treeFS()
 	vf := &fakeFileSystem{fsys: fsys}
-	resolver := engine.NewPathResolver(vf, "/", "/home", "/")
+	resolver := engine.NewPathResolver(vf, "/")
 	resolved, _ := resolver.Resolve("/root")
 
 	sink := &sliceSink{limit: 3}
@@ -304,7 +304,7 @@ func TestScanStopsOnSinkLimit(t *testing.T) {
 func TestScanRespectsContextCancellation(t *testing.T) {
 	fsys := treeFS()
 	vf := &fakeFileSystem{fsys: fsys}
-	resolver := engine.NewPathResolver(vf, "/", "/home", "/")
+	resolver := engine.NewPathResolver(vf, "/")
 	resolved, _ := resolver.Resolve("/root")
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -369,8 +369,8 @@ func TestScanUnreadableSubtreeIsSkippedNotFatal(t *testing.T) {
 	t.Cleanup(func() { os.Chmod(locked, 0o755) })
 
 	vf := vfs.NewOS(root)
-	resolver := engine.NewPathResolver(vf, root, root, root)
-	resolved, err := resolver.Resolve(root)
+	resolver := engine.NewPathResolver(vf, root)
+	resolved, err := resolver.Resolve(".")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -415,8 +415,8 @@ func TestScanUnreadableRootIsAnError(t *testing.T) {
 	t.Cleanup(func() { os.Chmod(locked, 0o755) })
 
 	vf := vfs.NewOS(root)
-	resolver := engine.NewPathResolver(vf, root, root, root)
-	resolved, err := resolver.Resolve(locked)
+	resolver := engine.NewPathResolver(vf, root)
+	resolved, err := resolver.Resolve("locked")
 	if err != nil {
 		t.Skipf("resolver rejected the locked root first: %v", err)
 	}

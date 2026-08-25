@@ -28,7 +28,7 @@ func historyFor(t *testing.T, root string, limit int) (*state.DirStore, state.Hi
 func TestHistoryAppendAndRead(t *testing.T) {
 	s, h := historyFor(t, t.TempDir(), 0)
 
-	for _, line := range []string{"select files from '.'", "select all from '~'", "exit"} {
+	for _, line := range []string{"files from '.'", "all from '~'", "exit"} {
 		if err := h.Append(line); err != nil {
 			t.Fatalf("Append(%q) error = %v", line, err)
 		}
@@ -38,7 +38,7 @@ func TestHistoryAppendAndRead(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Lines() error = %v", err)
 	}
-	want := []string{"select files from '.'", "select all from '~'", "exit"}
+	want := []string{"files from '.'", "all from '~'", "exit"}
 	if len(lines) != len(want) {
 		t.Fatalf("Lines() returned %d lines, want %d: %v", len(lines), len(want), lines)
 	}
@@ -270,9 +270,9 @@ func TestHistoryPreservesLinesWithSpecialCharacters(t *testing.T) {
 	_, h := historyFor(t, t.TempDir(), 0)
 
 	inputs := []string{
-		"select files from 'my folder'",
-		"select files from '~' where name_like = '%report%'",
-		"select folders from 'src' where count(child) <= 2",
+		"files from 'my folder'",
+		"files from '~' where name_like = '%report%'",
+		"folders from 'src' where count(child) <= 2",
 		"日本語のファイル",
 		"  leading and trailing  ",
 		"tab\tseparated",
@@ -300,7 +300,7 @@ func TestHistoryPreservesLinesWithSpecialCharacters(t *testing.T) {
 func TestHistoryHandlesVeryLongLine(t *testing.T) {
 	_, h := historyFor(t, t.TempDir(), 0)
 
-	long := "select files from '" + strings.Repeat("a", 200000) + "'"
+	long := "files from '" + strings.Repeat("a", 200000) + "'"
 	if err := h.Append(long); err != nil {
 		t.Fatalf("Append(long) error = %v", err)
 	}
@@ -353,7 +353,7 @@ func TestNoHistoryOptionDiscardsEverything(t *testing.T) {
 		t.Fatalf("History() with NoHistory error = %v", err)
 	}
 
-	if err := h.Append("select files from '.'"); err != nil {
+	if err := h.Append("files from '.'"); err != nil {
 		t.Errorf("Append with NoHistory error = %v, want nil", err)
 	}
 	lines, err := h.Lines(0)

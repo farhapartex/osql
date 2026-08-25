@@ -15,7 +15,7 @@ func TestDispatchRoutesQueryVerb(t *testing.T) {
 	out := &bytes.Buffer{}
 	app := shell.New(withPipeline(t, shell.Config{Out: out, Err: out}, pipelineFS()))
 
-	if err := app.Dispatch("select files from 'work'"); err != nil {
+	if err := app.Dispatch("files from 'work'"); err != nil {
 		t.Fatalf("Dispatch() error = %v", err)
 	}
 	if !strings.Contains(out.String(), "notes.txt") {
@@ -24,7 +24,7 @@ func TestDispatchRoutesQueryVerb(t *testing.T) {
 }
 
 func TestDispatchIsCaseInsensitiveOnKeywords(t *testing.T) {
-	tests := []string{"HELP", "Help", "hELp", "SELECT files from 'work'", "EXIT"}
+	tests := []string{"HELP", "Help", "hELp", "files from 'work'", "EXIT"}
 
 	for _, line := range tests {
 		t.Run(line, func(t *testing.T) {
@@ -67,50 +67,72 @@ func TestDispatchOnBlankInput(t *testing.T) {
 
 func TestDispatchUnknownVerbSuggests(t *testing.T) {
 	out := &bytes.Buffer{}
-	app := shell.New(shell.Config{Out: out, Err: out})
+	app := shell.New(withPipeline(t, shell.Config{Out: out, Err: out}, pipelineFS()))
 
-	err := app.Dispatch("slect files from '.'")
+	err := app.Dispatch("filez from '.'")
 	if err == nil {
-		t.Fatal("Dispatch accepted an unknown verb")
+		t.Fatal("Dispatch accepted an unknown word")
 	}
-	if !oerr.Is(err, oerr.KindUnknownVerb) {
-		t.Errorf("error kind = %v, want unknown_verb", err)
+	if !oerr.Is(err, oerr.KindUnknownTarget) {
+		t.Errorf("error kind = %v, want unknown_target", err)
 	}
-	if !strings.Contains(err.Error(), `Did you mean "select"?`) {
+	if !strings.Contains(err.Error(), `Did you mean "files"?`) {
 		t.Errorf("no suggestion offered: %v", err)
 	}
 }
 
 func TestDispatchUnknownVerbStaysSilentWhenFarOff(t *testing.T) {
-	app := shell.New(shell.Config{Out: &bytes.Buffer{}})
+	out := &bytes.Buffer{}
+	app := shell.New(withPipeline(t, shell.Config{Out: out, Err: out}, pipelineFS()))
 
 	err := app.Dispatch("frobnicate everything")
 	if err == nil {
-		t.Fatal("Dispatch accepted an unknown verb")
+		t.Fatal("Dispatch accepted an unknown word")
 	}
 	if strings.Contains(err.Error(), "Did you mean") {
 		t.Errorf("guessed at a far-off token: %v", err)
 	}
 }
 
-func TestKnownVerbsIncludesQueryAndBuiltins(t *testing.T) {
+func TestKnownWordsIncludesTargetsAndBuiltins(t *testing.T) {
 	app := shell.New(shell.Config{})
 
-	verbs := app.KnownVerbs()
-	if !slices.Contains(verbs, "select") {
-		t.Error("KnownVerbs() omits select, so typos would never suggest it")
+	words := app.KnownWords()
+	for _, target := range []string{"all", "files", "folders"} {
+		if !slices.Contains(words, target) {
+			t.Errorf("KnownWords() omits %q, so typos would never suggest it", target)
+		}
+	}
+	if slices.Contains(words, "select") {
+		t.Error("KnownWords() still offers select; the verb was removed")
 	}
 	for _, name := range app.Builtins().Names() {
-		if !slices.Contains(verbs, name) {
-			t.Errorf("KnownVerbs() omits builtin %q", name)
+		if !slices.Contains(words, name) {
+			t.Errorf("KnownWords() omits builtin %q", name)
 		}
+	}
+}
+
+func TestLegacySelectVerbIsRejectedHelpfully(t *testing.T) {
+	out := &bytes.Buffer{}
+	app := shell.New(withPipeline(t, shell.Config{Out: out, Err: out}, pipelineFS()))
+
+	err := app.Dispatch("select files from 'work'")
+	if err == nil {
+		t.Fatal("the removed select verb was accepted")
+	}
+	if !oerr.Is(err, oerr.KindNoVerbNeeded) {
+		t.Errorf("error kind = %v, want no_verb_needed", err)
+	}
+	if !strings.Contains(err.Error(), "files from 'Documents'") {
+		t.Errorf("error does not show the new form: %v", err)
 	}
 }
 
 func TestRunStopsOnExitBuiltin(t *testing.T) {
 	out := &bytes.Buffer{}
 	app := shell.New(shell.Config{
-		Reader:  reader.NewBasic(strings.NewReader("exit\nselect files from '.'\n"), out, nil),
+		Reader:  reader.NewBasic(strings.NewReader("exit\nfiles from '.'\n"), out, nil),
 		Out:     out,
 		Err:     out,
 		Version: "v1",
@@ -120,7 +142,7 @@ func TestRunStopsOnExitBuiltin(t *testing.T) {
 	if err := app.Run(); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
-	if strings.Contains(out.String(), "select files from '.'") {
+	if strings.Contains(out.String(), "files from '.'") {
 		t.Error("Run kept reading after exit")
 	}
 }
@@ -128,11 +150,9 @@ func TestRunStopsOnExitBuiltin(t *testing.T) {
 func TestRunWritesErrorsToErrNotOut(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
-	app := shell.New(shell.Config{
-		Reader: reader.NewBasic(strings.NewReader("slect files\n"), stdout, nil),
-		Out:    stdout,
-		Err:    stderr,
-	})
+	cfg := withPipeline(t, shell.Config{Out: stdout, Err: stderr}, pipelineFS())
+	cfg.Reader = reader.NewBasic(strings.NewReader("filez from '.'\n"), stdout, nil)
+	app := shell.New(cfg)
 
 	if err := app.Run(); err != nil {
 		t.Fatalf("Run() error = %v", err)
@@ -149,7 +169,7 @@ func TestRunSurvivesBadCommandAndKeepsPrompting(t *testing.T) {
 	out := &bytes.Buffer{}
 	errBuf := &bytes.Buffer{}
 	cfg := withPipeline(t, shell.Config{Out: out, Err: errBuf}, pipelineFS())
-	cfg.Reader = reader.NewBasic(strings.NewReader("slect x\nselect files from 'work'\nexit\n"), out, nil)
+	cfg.Reader = reader.NewBasic(strings.NewReader("slect x\nfiles from 'work'\nexit\n"), out, nil)
 
 	app := shell.New(cfg)
 	if err := app.Run(); err != nil {

@@ -26,7 +26,7 @@ func withPipeline(t *testing.T, cfg shell.Config, fsys fstest.MapFS) shell.Confi
 
 	vf := &fakeFileSystem{fsys: fsys}
 	compiler := engine.NewCompiler(engine.DefaultFields(vf), engine.DefaultOperators())
-	resolver := engine.NewPathResolver(vf, "/", "/home", "/")
+	resolver := engine.NewPathResolver(vf, "/")
 
 	cfg.Lexer = query.NewLexer()
 	cfg.Parser = query.NewParser(compiler)
@@ -88,7 +88,7 @@ func TestShellRunGreetsThenPromptsThenExitsOnEOF(t *testing.T) {
 }
 
 func TestShellRunExecutesQueries(t *testing.T) {
-	got := runShell(t, "select files from 'work'\n", nil)
+	got := runShell(t, "files from 'work'\n", nil)
 
 	for _, want := range []string{"notes.txt", "report.pdf"} {
 		if !strings.Contains(got, want) {
@@ -102,12 +102,12 @@ func TestShellRunExecutesQueries(t *testing.T) {
 
 func TestShellRunSkipsBlankLines(t *testing.T) {
 	hist := &errAppender{}
-	out := runShell(t, "\n\n   \n\t\nselect files from '.'\n", hist)
+	out := runShell(t, "\n\n   \n\t\nfiles from '.'\n", hist)
 
 	if len(hist.lines) != 1 {
 		t.Errorf("history recorded %d lines, want 1; blank and whitespace-only lines are not commands", len(hist.lines))
 	}
-	if len(hist.lines) == 1 && hist.lines[0] != "select files from '.'" {
+	if len(hist.lines) == 1 && hist.lines[0] != "files from '.'" {
 		t.Errorf("history recorded %q", hist.lines[0])
 	}
 
@@ -119,12 +119,12 @@ func TestShellRunSkipsBlankLines(t *testing.T) {
 
 func TestShellRunTrimsSurroundingWhitespaceBeforeRecording(t *testing.T) {
 	hist := &errAppender{}
-	runShell(t, "   select files from '.'   \n", hist)
+	runShell(t, "   files from '.'   \n", hist)
 
 	if len(hist.lines) != 1 {
 		t.Fatalf("history recorded %d lines, want 1", len(hist.lines))
 	}
-	if hist.lines[0] != "select files from '.'" {
+	if hist.lines[0] != "files from '.'" {
 		t.Errorf("history recorded %q, want the trimmed line", hist.lines[0])
 	}
 }
@@ -141,7 +141,7 @@ func TestShellRunRecordsInvalidLinesToo(t *testing.T) {
 func TestShellRunSurvivesHistoryFailure(t *testing.T) {
 	hist := &errAppender{err: errors.New("disk full")}
 
-	got := runShell(t, "select files from 'work'\n", hist)
+	got := runShell(t, "files from 'work'\n", hist)
 
 	if !strings.Contains(got, "notes.txt") {
 		t.Error("a history write failure must not stop the shell from working")
@@ -192,7 +192,7 @@ func TestShellAcceptsFullyInjectedConfig(t *testing.T) {
 		Version:  "v1",
 		Commit:   "c1",
 	}, pipelineFS())
-	cfg.Reader = reader.NewBasic(strings.NewReader("select files from 'work'\n"), out, nil)
+	cfg.Reader = reader.NewBasic(strings.NewReader("files from 'work'\n"), out, nil)
 
 	app := shell.New(cfg)
 

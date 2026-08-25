@@ -1,13 +1,13 @@
 # osql
 
-An interactive shell for querying your filesystem in SQL-like statements instead
-of flags and pipes.
+An interactive shell for querying your filesystem in plain statements instead of
+flags and pipes.
 
 ```
 $ osql
-osql > select files from 'Documents'
-osql > select files from 'Documents' where type = 'txt'
-osql > select files from '~' recursive where name_like = '%report%'
+osql > files from 'Documents'
+osql > files from 'Documents' where type = 'txt'
+osql > files from '~' recursive where name_like = '%report%'
 osql > exit
 ```
 
@@ -55,6 +55,7 @@ osql
 | Target | Does |
 |---|---|
 | `make test` | `go test ./... -race` |
+| `make e2e` | drives the built binary against a real fixture and reports pass/fail |
 | `make bench` | benchmarks with allocation counts |
 | `make vet` | `go vet ./...` |
 | `make fmt` | `go fmt ./...` |
@@ -64,9 +65,23 @@ osql
 ## Planned query syntax
 
 ```
-select <all|files|folders> from '<path>' [recursive] [where <condition>]
+<all|files|folders> from '<path>' [recursive] [where <condition>]
 ```
 
 Fields are `name`, `name_like` (with `%` wildcards), `type`, and `count(child)`.
 Conditions combine with `and`. Queries read one directory level unless you add
 `recursive`.
+
+## Paths
+
+`osql` is anchored at a root, which defaults to your home directory. Every path
+is resolved inside it, so these all mean the same folder:
+
+```
+files from 'Documents'
+files from '/Documents'
+files from '~/Documents'
+```
+
+`.`, `~`, and `/` all mean the root itself. `..` cannot escape it. Use
+`osql --root /` to anchor a session at the whole filesystem instead.

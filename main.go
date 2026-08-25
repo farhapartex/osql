@@ -42,9 +42,13 @@ func run(args []string) error {
 		return nil
 	}
 
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return err
+	queryRoot := opts.Root
+	if queryRoot == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return err
+		}
+		queryRoot = home
 	}
 
 	root, err := state.DefaultRoot()
@@ -76,14 +80,9 @@ func run(args []string) error {
 		return err
 	}
 
-	cwd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-
-	fsys := vfs.OS()
+	fsys := vfs.NewOS(queryRoot)
 	compiler := engine.NewCompiler(engine.DefaultFields(fsys), engine.DefaultOperators())
-	resolver := engine.NewPathResolver(fsys, fsys.Root(), home, cwd)
+	resolver := engine.NewPathResolver(fsys, fsys.Root())
 	selector := engine.NewSelectExecutor(fsys, resolver, compiler, engine.DefaultSkipList())
 
 	app := shell.New(shell.Config{

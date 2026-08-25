@@ -22,7 +22,7 @@ func NewSkipList(names, paths []string) SkipList {
 func DefaultSkipList() SkipList {
 	return NewSkipList(
 		[]string{".git", "node_modules", ".Trash", ".Spotlight-V100", ".fseventsd"},
-		[]string{"System", "Volumes", "proc", "sys", "dev", "private/var/vm"},
+		[]string{"Library/Caches", "Library/Containers", "System", "Volumes", "proc", "sys", "dev", "private/var/vm"},
 	)
 }
 
