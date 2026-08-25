@@ -5,22 +5,47 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"testing/fstest"
 
+	"github.com/farhapartex/osql/internal/engine"
+	"github.com/farhapartex/osql/internal/query"
 	"github.com/farhapartex/osql/internal/reader"
 	"github.com/farhapartex/osql/internal/shell"
 )
+
+func pipelineFS() fstest.MapFS {
+	return fstest.MapFS{
+		"work/notes.txt":  {Data: []byte("a")},
+		"work/report.pdf": {Data: []byte("b")},
+		"work/sub/x.txt":  {Data: []byte("c")},
+	}
+}
+
+func withPipeline(t *testing.T, cfg shell.Config, fsys fstest.MapFS) shell.Config {
+	t.Helper()
+
+	vf := &fakeFileSystem{fsys: fsys}
+	compiler := engine.NewCompiler(engine.DefaultFields(vf), engine.DefaultOperators())
+	resolver := engine.NewPathResolver(vf, "/", "/home", "/")
+
+	cfg.Lexer = query.NewLexer()
+	cfg.Parser = query.NewParser(compiler)
+	cfg.Engine = engine.NewRegistry(engine.NewSelectExecutor(vf, resolver, compiler, engine.EmptySkipList()))
+	return cfg
+}
 
 func runShell(t *testing.T, input string, hist reader.HistoryAppender) string {
 	t.Helper()
 
 	out := &bytes.Buffer{}
-	app := shell.New(shell.Config{
-		Reader:  reader.NewBasic(strings.NewReader(input), out, hist),
+	cfg := withPipeline(t, shell.Config{
 		Out:     out,
 		Version: "v0.1.0",
 		Commit:  "abc1234",
-	})
+	}, pipelineFS())
+	cfg.Reader = reader.NewBasic(strings.NewReader(input), out, hist)
 
+	app := shell.New(cfg)
 	if err := app.Run(); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
@@ -62,13 +87,16 @@ func TestShellRunGreetsThenPromptsThenExitsOnEOF(t *testing.T) {
 	}
 }
 
-func TestShellRunEchoesEachLine(t *testing.T) {
-	got := runShell(t, "select files from '.'\nselect all from '~'\n", nil)
+func TestShellRunExecutesQueries(t *testing.T) {
+	got := runShell(t, "select files from 'work'\n", nil)
 
-	for _, want := range []string{"select files from '.'", "select all from '~'"} {
+	for _, want := range []string{"notes.txt", "report.pdf"} {
 		if !strings.Contains(got, want) {
-			t.Errorf("output missing echoed line %q:\n%s", want, got)
+			t.Errorf("output missing query result %q:\n%s", want, got)
 		}
+	}
+	if strings.Contains(got, "sub/x.txt") {
+		t.Error("non-recursive select descended into a subdirectory")
 	}
 }
 
@@ -113,9 +141,9 @@ func TestShellRunRecordsInvalidLinesToo(t *testing.T) {
 func TestShellRunSurvivesHistoryFailure(t *testing.T) {
 	hist := &errAppender{err: errors.New("disk full")}
 
-	got := runShell(t, "select files from '.'\n", hist)
+	got := runShell(t, "select files from 'work'\n", hist)
 
-	if !strings.Contains(got, "select files from '.'") {
+	if !strings.Contains(got, "notes.txt") {
 		t.Error("a history write failure must not stop the shell from working")
 	}
 }
@@ -156,17 +184,17 @@ func TestShellAcceptsFullyInjectedConfig(t *testing.T) {
 	out := &bytes.Buffer{}
 	store := &fakeStore{}
 
-	app := shell.New(shell.Config{
-		Reader:   reader.NewBasic(strings.NewReader("select files from '.'\n"), out, nil),
-		Lexer:    &fakeLexer{},
-		Parser:   &fakeParser{},
+	cfg := withPipeline(t, shell.Config{
 		Renderer: &fakeRenderer{},
 		Store:    store,
 		Out:      out,
 		Err:      &bytes.Buffer{},
 		Version:  "v1",
 		Commit:   "c1",
-	})
+	}, pipelineFS())
+	cfg.Reader = reader.NewBasic(strings.NewReader("select files from 'work'\n"), out, nil)
+
+	app := shell.New(cfg)
 
 	if err := app.Run(); err != nil {
 		t.Fatalf("Run() error = %v", err)

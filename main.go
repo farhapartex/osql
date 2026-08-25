@@ -6,9 +6,13 @@ import (
 
 	"github.com/farhapartex/osql/internal/buildinfo"
 	"github.com/farhapartex/osql/internal/cli"
+	"github.com/farhapartex/osql/internal/engine"
+	"github.com/farhapartex/osql/internal/output"
+	"github.com/farhapartex/osql/internal/query"
 	"github.com/farhapartex/osql/internal/reader"
 	"github.com/farhapartex/osql/internal/shell"
 	"github.com/farhapartex/osql/internal/state"
+	"github.com/farhapartex/osql/internal/vfs"
 )
 
 var (
@@ -36,6 +40,11 @@ func run(args []string) error {
 	case cli.CommandHelp:
 		fmt.Fprintln(os.Stdout, cli.Usage)
 		return nil
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
 	}
 
 	root, err := state.DefaultRoot()
@@ -67,13 +76,27 @@ func run(args []string) error {
 		return err
 	}
 
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	fsys := vfs.OS()
+	compiler := engine.NewCompiler(engine.DefaultFields(fsys), engine.DefaultOperators())
+	resolver := engine.NewPathResolver(fsys, fsys.Root(), home, cwd)
+	selector := engine.NewSelectExecutor(fsys, resolver, compiler, engine.DefaultSkipList())
+
 	app := shell.New(shell.Config{
-		Reader:  reader.NewBasic(os.Stdin, os.Stdout, history),
-		Store:   store,
-		Out:     os.Stdout,
-		Err:     os.Stderr,
-		Version: version,
-		Commit:  commit,
+		Reader:   reader.NewBasic(os.Stdin, os.Stdout, history),
+		Lexer:    query.NewLexer(),
+		Parser:   query.NewParser(compiler),
+		Engine:   engine.NewRegistry(selector),
+		Renderer: output.NewLines(),
+		Store:    store,
+		Out:      os.Stdout,
+		Err:      os.Stderr,
+		Version:  version,
+		Commit:   commit,
 	})
 
 	return app.Run()

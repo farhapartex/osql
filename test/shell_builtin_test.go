@@ -26,7 +26,7 @@ func shellWithStore(t *testing.T, out *bytes.Buffer) (*shell.Shell, state.Histor
 		t.Fatalf("History() error = %v", err)
 	}
 
-	app := shell.New(shell.Config{Store: store, Out: out, Err: out})
+	app := shell.New(withPipeline(t, shell.Config{Store: store, Out: out, Err: out}, pipelineFS()))
 	return app, hist
 }
 
