@@ -1,0 +1,147 @@
+# Error messages
+
+Every message tries to say two things: what went wrong, and what to do about it.
+This page lists them all with a fix.
+
+## Paths
+
+**`I couldn't find a folder at 'Documnets'. Check the path and try again.`**
+
+The folder is not there. Check the spelling. Remember that paths start from your
+home folder, so `/etc` means `~/etc`.
+
+```bash
+folders from '.'          # see what is actually there
+```
+
+---
+
+**`'notes.txt' is a file, not a folder. Try: files from 'Documents'`**
+
+You pointed at a file. `osql` looks *inside* folders, so give it the folder that
+holds the file.
+
+---
+
+**`I can only look inside '/Users/you'. '../etc' points outside it.`**
+
+`..` cannot climb above where `osql` started. If you need somewhere else, start
+it there:
+
+```bash
+osql --root /
+```
+
+---
+
+**`I don't have permission to read 'Library'.`**
+
+Your user cannot open that folder. Try `sudo`, or pick another folder.
+
+## Getting the query shape right
+
+**`Queries don't need "select" — start with what you want: files from 'Documents'`**
+
+There is no `select` in `osql`. Drop it.
+
+---
+
+**`I need "files", "folders", or "all" to start — for example: files from 'Documents'`**
+
+Your query has no subject. Say what you want first.
+
+---
+
+**`Use "files", not "file" — for example: files from 'Documents'`**
+
+Always plural. `file` and `folder` are not accepted.
+
+---
+
+**`I can list "files", "folders", or "all" — not "filez". Did you mean "files"?`**
+
+A typo. If the word is close to a real one, the message says which.
+
+---
+
+**`I need "from" before the folder — for example: files from 'Documents'`**
+
+The word `from` is required between what you want and where to look.
+
+---
+
+**`I need a folder after "from" — for example: files from 'Documents'`**
+
+The query stops at `from`. Add the folder.
+
+---
+
+**`I don't understand "junk" here. Try: files from 'Documents'`**
+
+There is something extra on the end that does not belong.
+
+---
+
+**`The query ends after "where". I need more — for example: files from 'Documents' where name = 'notes.txt'`**
+
+The query stops in the middle. Finish the condition.
+
+## Filters
+
+**`I don't know the field "extension". I understand: name, name_like, type, count(child)`**
+
+That is not a field you can filter on. The message lists the ones you can. For
+extensions the field is called `type`.
+
+---
+
+**`"name" only works with = and !=. For patterns use name_like: files from 'Documents' where name_like = '%report%'`**
+
+You used `<`, `>`, or similar on a text field. Those only work on
+`count(child)`. For loose name matching use `name_like`.
+
+---
+
+**`count(child) describes folders, not files. Try: folders from 'Documents' where count(child) > 10`**
+
+Files have nothing inside them. Ask for `folders` instead.
+
+---
+
+**`count(child) needs a number — for example: count(child) > 10`**
+
+You compared it to text. It counts things, so it needs a number.
+
+## Typing mistakes
+
+**`This quote is never closed: 'Documents — add a closing '`**
+
+You opened a quote and never closed it. The message shows what came after it.
+
+---
+
+**`count( needs a closing ) — for example: count(files) from 'Documents'`**
+
+You opened `count(` and never closed it.
+
+## Outcomes, not errors
+
+These two are normal answers, not problems:
+
+**`No files matched.`** — the query worked; nothing fit the filter.
+
+**`'Documents' is empty.`** — the folder is real and has nothing in it.
+
+## One rough edge
+
+A typo in a *built-in command* gets the query message rather than a suggestion:
+
+```bash
+helpp
+```
+
+```
+I can list "files", "folders", or "all" — not "helpp".
+```
+
+It should suggest `help`. Type `help` to see the list of commands.
