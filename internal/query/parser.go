@@ -10,6 +10,8 @@ const (
 	VerbSelect       = "select"
 	VerbCount        = "count"
 	VerbOpen         = "open"
+	VerbNew          = "new"
+	KeywordData      = "data"
 	LegacyVerb       = "select"
 	KeywordFrom      = "from"
 	KeywordRecursive = "recursive"
@@ -83,6 +85,11 @@ func (p stdParser) Parse(tokens []Token) (*Statement, error) {
 		return parseOpen(c)
 	}
 
+	if c.peek().IsKeyword(VerbNew) {
+		c.next()
+		return parseNew(c)
+	}
+
 	verb := VerbSelect
 	if c.peek().IsKeyword(KeywordCount) && c.peekAt(1).Kind == TokenLParen {
 		verb = VerbCount
@@ -154,6 +161,53 @@ func parseOpen(c *cursor) (*Statement, error) {
 		return nil, oerr.UnexpectedInput(c.peek().Value)
 	}
 	return &Statement{Verb: VerbOpen, Path: path}, nil
+}
+
+func parseNew(c *cursor) (*Statement, error) {
+	kindToken := c.peek()
+	if kindToken.Kind != TokenIdent {
+		return nil, oerr.MissingNewTarget("")
+	}
+	kind, ok := ParseNewKind(strings.ToLower(kindToken.Value))
+	if !ok {
+		if _, plural := ParseTarget(strings.ToLower(kindToken.Value)); plural {
+			return nil, oerr.SingularNewTarget(kindToken.Value)
+		}
+		return nil, oerr.MissingNewTarget(kindToken.Value)
+	}
+	c.next()
+
+	path, err := parsePath(c)
+	if err != nil {
+		return nil, oerr.MissingNewPath(kind.String())
+	}
+
+	stmt := &Statement{Verb: VerbNew, Kind: kind, Path: path}
+
+	if c.peek().IsKeyword(KeywordData) {
+		c.next()
+		if c.peek().Kind != TokenOperator || c.peek().Value != "=" {
+			return nil, oerr.UnexpectedInput(c.peek().Value)
+		}
+		c.next()
+
+		value := c.peek()
+		if value.Kind != TokenString && value.Kind != TokenIdent {
+			return nil, oerr.MissingDataValue()
+		}
+		c.next()
+
+		if kind == NewFolder {
+			return nil, oerr.DataOnFolder()
+		}
+		stmt.Data = value.Value
+		stmt.HasData = true
+	}
+
+	if !c.atEOF() {
+		return nil, oerr.UnexpectedInput(c.peek().Value)
+	}
+	return stmt, nil
 }
 
 func parseTarget(c *cursor) (Target, error) {

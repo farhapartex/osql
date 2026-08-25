@@ -36,10 +36,41 @@ type Predicate struct {
 	Value string
 }
 
+type NewKind int
+
+const (
+	NewFile NewKind = iota
+	NewFolder
+)
+
+var newKindNames = map[NewKind]string{
+	NewFile:   "file",
+	NewFolder: "folder",
+}
+
+func (k NewKind) String() string {
+	if name, ok := newKindNames[k]; ok {
+		return name
+	}
+	return "unknown"
+}
+
+func ParseNewKind(s string) (NewKind, bool) {
+	for kind, name := range newKindNames {
+		if name == s {
+			return kind, true
+		}
+	}
+	return NewFile, false
+}
+
 type Statement struct {
 	Verb       string
 	Target     Target
 	Path       string
 	Recursive  bool
 	Predicates []Predicate
+	Kind       NewKind
+	Data       string
+	HasData    bool
 }
