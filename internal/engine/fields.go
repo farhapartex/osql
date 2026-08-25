@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"path"
 	"strconv"
 	"strings"
 
@@ -74,7 +73,7 @@ func (TypeField) Extract(e Entry) (Value, error) {
 	if e.DirEntry.IsDir() {
 		return Value{Text: TypeFolder}, nil
 	}
-	return Value{Text: strings.TrimPrefix(path.Ext(e.DirEntry.Name()), ".")}, nil
+	return Value{Text: ExtensionOf(e.DirEntry.Name())}, nil
 }
 
 type CountChildField struct {

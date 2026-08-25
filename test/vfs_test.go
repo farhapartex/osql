@@ -390,3 +390,55 @@ func TestOSFileSystemDoesNotEscapeItsRoot(t *testing.T) {
 		}
 	}
 }
+
+func TestFSPathUnderNonRootFilesystem(t *testing.T) {
+	tests := []struct {
+		root     string
+		absolute string
+		want     string
+	}{
+		{"/tmp/box", "/tmp/box", "."},
+		{"/tmp/box", "/tmp/box/", "."},
+		{"/tmp/box", "/tmp/box/Documents", "Documents"},
+		{"/tmp/box", "/tmp/box/a/b/c", "a/b/c"},
+		{"/tmp/box/", "/tmp/box/a", "a"},
+		{"/", "/a/b", "a/b"},
+		{"/", "/", "."},
+	}
+
+	for _, tt := range tests {
+		got, err := vfs.FSPathUnder(tt.root, tt.absolute)
+		if err != nil {
+			t.Errorf("FSPathUnder(%q, %q) error = %v", tt.root, tt.absolute, err)
+			continue
+		}
+		if got != tt.want {
+			t.Errorf("FSPathUnder(%q, %q) = %q, want %q", tt.root, tt.absolute, got, tt.want)
+		}
+		if !fs.ValidPath(got) {
+			t.Errorf("FSPathUnder(%q, %q) = %q, rejected by fs.ValidPath", tt.root, tt.absolute, got)
+		}
+	}
+}
+
+func TestFSPathUnderRejectsPathsOutsideRoot(t *testing.T) {
+	tests := [][2]string{
+		{"/tmp/box", "/tmp/other"},
+		{"/tmp/box", "/tmp"},
+		{"/tmp/box", "/"},
+		{"/tmp/box", "/tmp/boxer"},
+		{"/tmp/box", "/etc/passwd"},
+	}
+
+	for _, tt := range tests {
+		if _, err := vfs.FSPathUnder(tt[0], tt[1]); !errors.Is(err, vfs.ErrOutsideRoot) {
+			t.Errorf("FSPathUnder(%q, %q) error = %v, want ErrOutsideRoot", tt[0], tt[1], err)
+		}
+	}
+}
+
+func TestFSPathUnderSiblingPrefixIsNotAMatch(t *testing.T) {
+	if _, err := vfs.FSPathUnder("/tmp/box", "/tmp/boxcar/file.txt"); !errors.Is(err, vfs.ErrOutsideRoot) {
+		t.Error("a sibling directory sharing a name prefix was treated as inside the root")
+	}
+}
