@@ -8,6 +8,7 @@ import (
 
 const (
 	VerbSelect       = "select"
+	LegacyVerb       = "select"
 	KeywordFrom      = "from"
 	KeywordRecursive = "recursive"
 	KeywordWhere     = "where"
@@ -62,12 +63,11 @@ func (p stdParser) Parse(tokens []Token) (*Statement, error) {
 	c := &cursor{tokens: tokens}
 
 	if c.atEOF() {
-		return nil, oerr.UnknownVerb("", []string{VerbSelect})
+		return nil, oerr.MissingTarget()
 	}
-	if !c.peek().IsKeyword(VerbSelect) {
-		return nil, oerr.UnknownVerb(c.peek().Value, []string{VerbSelect})
+	if c.peek().IsKeyword(LegacyVerb) {
+		return nil, oerr.NoVerbNeeded(c.peek().Value)
 	}
-	c.next()
 
 	target, err := parseTarget(c)
 	if err != nil {
@@ -143,7 +143,11 @@ func parseTarget(c *cursor) (Target, error) {
 	}
 
 	c.next()
-	return TargetAll, oerr.UnknownTarget(t.Value)
+	return TargetAll, oerr.UnknownTarget(t.Value, targetNamesInOrder)
+}
+
+func TargetNames() []string {
+	return append([]string(nil), targetNamesInOrder...)
 }
 
 func parsePath(c *cursor) (string, error) {
