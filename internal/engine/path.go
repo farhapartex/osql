@@ -19,34 +19,32 @@ type Resolved struct {
 type PathResolver struct {
 	fsys vfs.FileSystem
 	root string
-	home string
-	cwd  string
 }
 
-func NewPathResolver(fsys vfs.FileSystem, root, home, cwd string) *PathResolver {
+func NewPathResolver(fsys vfs.FileSystem, root string) *PathResolver {
 	if root == "" {
 		root = vfs.Separator
 	}
-	return &PathResolver{fsys: fsys, root: root, home: home, cwd: cwd}
+	return &PathResolver{fsys: fsys, root: filepath.Clean(root)}
+}
+
+func (r *PathResolver) Root() string {
+	return r.root
 }
 
 func (r *PathResolver) Expand(input string) string {
 	path := strings.TrimSpace(input)
-	if path == "" {
-		path = "."
-	}
 
 	switch {
-	case path == "~":
-		path = r.home
+	case path == "" || path == "." || path == "~" || path == vfs.Separator:
+		return r.root
 	case strings.HasPrefix(path, "~/"):
-		path = filepath.Join(r.home, path[2:])
+		path = path[2:]
+	case strings.HasPrefix(path, vfs.Separator):
+		path = path[1:]
 	}
 
-	if !filepath.IsAbs(path) {
-		path = filepath.Join(r.cwd, path)
-	}
-	return filepath.Clean(path)
+	return filepath.Join(r.root, path)
 }
 
 func (r *PathResolver) Resolve(input string) (Resolved, error) {
@@ -54,6 +52,9 @@ func (r *PathResolver) Resolve(input string) (Resolved, error) {
 
 	fsPath, err := vfs.FSPathUnder(r.root, absolute)
 	if err != nil {
+		if errors.Is(err, vfs.ErrOutsideRoot) {
+			return Resolved{}, oerr.OutsideRoot(input, r.root)
+		}
 		return Resolved{}, oerr.FolderMissing(input)
 	}
 
@@ -72,8 +73,6 @@ func classifyStatError(input string, err error) error {
 	switch {
 	case errors.Is(err, fs.ErrPermission):
 		return oerr.NoPermission(input)
-	case errors.Is(err, fs.ErrNotExist):
-		return oerr.FolderMissing(input)
 	default:
 		return oerr.FolderMissing(input)
 	}
