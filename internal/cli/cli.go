@@ -1,6 +1,9 @@
 package cli
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type Command int
 
@@ -29,6 +32,7 @@ type Options struct {
 	Command   Command
 	Reinit    bool
 	NoHistory bool
+	Root      string
 }
 
 const Usage = `osql — query your filesystem in SQL-like statements
@@ -39,9 +43,13 @@ usage:
   osql init --reinit    rewrite system.txt even if it exists
 
 flags:
+  --root <path>         anchor queries at <path> instead of your home directory
   --no-history          do not record this session's commands
   --version             print the version and exit
-  --help                print this message`
+  --help                print this message
+
+Every path is resolved inside the root, so 'Documents', '/Documents' and
+'~/Documents' all mean the same folder.`
 
 func Parse(args []string) (Options, error) {
 	opts := Options{Command: CommandShell}
@@ -51,8 +59,30 @@ func Parse(args []string) (Options, error) {
 		args = args[1:]
 	}
 
-	for _, arg := range args {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+
+		if value, ok := strings.CutPrefix(arg, "--root="); ok {
+			if opts.Command != CommandShell {
+				return Options{}, fmt.Errorf("--root only applies to the interactive shell")
+			}
+			if value == "" {
+				return Options{}, fmt.Errorf("--root needs a path, for example: osql --root /")
+			}
+			opts.Root = value
+			continue
+		}
+
 		switch arg {
+		case "--root":
+			if opts.Command != CommandShell {
+				return Options{}, fmt.Errorf("--root only applies to the interactive shell")
+			}
+			if i+1 >= len(args) {
+				return Options{}, fmt.Errorf("--root needs a path, for example: osql --root /")
+			}
+			i++
+			opts.Root = args[i]
 		case "--version", "-v":
 			if opts.Command != CommandShell {
 				return Options{}, fmt.Errorf("--version cannot be combined with %q", opts.Command)
