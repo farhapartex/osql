@@ -48,6 +48,13 @@ flags:
   --version             print the version and exit
   --help                print this message
 
+queries:
+  files from '<path>'                       one level, files only
+  folders from '<path>'                     one level, folders only
+  all from '<path>'                         one level, everything
+  files from '<path>' recursive             the whole subtree
+  files from '<path>' where type = 'txt'    filtered
+
 Every path is resolved inside the root, so 'Documents', '/Documents' and
 '~/Documents' all mean the same folder.`
 

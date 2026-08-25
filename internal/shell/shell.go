@@ -12,12 +12,10 @@ import (
 	"github.com/farhapartex/osql/internal/engine"
 	"github.com/farhapartex/osql/internal/oerr"
 	"github.com/farhapartex/osql/internal/output"
+	"github.com/farhapartex/osql/internal/query"
 )
 
-const (
-	Prompt    = "osql > "
-	QueryVerb = "select"
-)
+const Prompt = "osql > "
 
 var (
 	ErrNoReader   = errors.New("no line reader configured")
@@ -51,8 +49,8 @@ func (s *Shell) Greeting() string {
 	return fmt.Sprintf("%s — type \"help\" for commands, \"exit\" to quit.", buildinfo.String(s.cfg.Version, s.cfg.Commit))
 }
 
-func (s *Shell) KnownVerbs() []string {
-	return append([]string{QueryVerb}, s.builtins.Names()...)
+func (s *Shell) KnownWords() []string {
+	return append(query.TargetNames(), s.builtins.Names()...)
 }
 
 func (s *Shell) Run() error {
@@ -105,7 +103,7 @@ func (s *Shell) runQuery(line string) error {
 
 	executor, ok := s.cfg.Engine.Lookup(stmt.Verb)
 	if !ok {
-		return oerr.UnknownVerb(stmt.Verb, s.KnownVerbs())
+		return oerr.UnknownVerb(stmt.Verb, s.KnownWords())
 	}
 
 	sink := &engine.SliceSink{}
@@ -138,9 +136,5 @@ func (s *Shell) Dispatch(line string) error {
 	if b, ok := s.builtins.Lookup(name); ok {
 		return b.Run(s, fields[1:])
 	}
-	if name == QueryVerb {
-		return s.runQuery(line)
-	}
-
-	return oerr.UnknownVerb(fields[0], s.KnownVerbs())
+	return s.runQuery(line)
 }
