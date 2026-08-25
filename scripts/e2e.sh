@@ -36,9 +36,8 @@ fail() {
 setup() {
   WORK="$(mktemp -d)"
   export HOME="$WORK/home"
-  FIXTURE="$WORK/fixture"
+  FIXTURE="$HOME"
 
-  mkdir -p "$HOME"
   mkdir -p "$FIXTURE"/{docs,src/big,src/one,empty_ish,nested/deep}
 
   printf 'notes' > "$FIXTURE/docs/notes.txt"
@@ -183,6 +182,9 @@ main() {
   expect_cmd "unknown flag exits 1" 1 "$BIN" --frobnicate
   expect_cmd_contains "unknown flag explains itself" "osql --help" "$BIN" --frobnicate
   expect_cmd_contains "init reports the state directory" ".osql" "$BIN" init
+  expect_cmd_contains "--help documents the root flag" "--root" "$BIN" --help
+  expect_cmd "--root with no value exits 1" 1 "$BIN" --root
+  expect_cmd "--root with init exits 1" 1 "$BIN" init --root /
 
   section "shell basics"
   expect_shell_contains "greeting advertises help and exit" 'exit
@@ -226,11 +228,18 @@ exit
   expect_names "count equal" "select folders from 'src' where count(child) = 1" "one"
   expect_names "count less or equal" "select folders from 'src' where count(child) <= 1" "one"
 
-  section "select — paths"
-  expect_contains "tilde expands to home" "select files from '~/Documents'" "home_notes.txt"
-  expect_contains "bare word path" "select files from docs" "notes.txt"
-  expect_contains "dot is the working directory" "select files from '.'" "app.log"
-  expect_contains "absolute path" "select files from '$FIXTURE/docs'" "notes.txt"
+  section "select — paths are root-relative"
+  expect_names "bare path" "select files from 'docs' where type = 'txt'" "notes.txt q4-report.txt secret.txt"
+  expect_names "leading slash means the root, not the filesystem" "select files from '/docs' where type = 'txt'" "notes.txt q4-report.txt secret.txt"
+  expect_names "tilde form" "select files from '~/docs' where type = 'txt'" "notes.txt q4-report.txt secret.txt"
+  expect_names "dot prefix form" "select files from './docs' where type = 'txt'" "notes.txt q4-report.txt secret.txt"
+  expect_contains "bare word without quotes" "select files from docs" "notes.txt"
+  expect_contains "dot is the root" "select files from '.'" "app.log"
+  expect_contains "tilde is the root" "select folders from '~'" "docs"
+  expect_contains "slash is the root" "select folders from '/'" "docs"
+  expect_contains "nested rooted path" "select files from '/nested/deep'" "far.txt"
+  expect_line "escaping the root is refused" "select files from '../..'" "I can only look inside '$HOME'. '../..' points outside it."
+  expect_line "system paths are not reachable" "select files from '/etc'" "I couldn't find a folder at '/etc'. Check the path and try again."
 
   section "select — lexing"
   expect_contains "uppercase keywords" "SELECT FILES FROM 'docs'" "notes.txt"
@@ -269,6 +278,20 @@ exit
   expect_contains "unexpected trailing input" "select files from 'docs' junk" 'I don'"'"'t understand "junk" here.'
   expect_contains "query ends early" "select files from 'docs' where" 'The query ends after "where".'
   expect_contains "or is not supported yet" "select files from 'docs' where name = 'a' or name = 'b'" 'I don'"'"'t understand "or" here.'
+
+  section "--root override"
+  root_out="$(printf "select folders from '/'\nexit\n" | (cd "$FIXTURE" && "$BIN" --root "$FIXTURE/docs") 2>&1)"
+  if printf '%s' "$root_out" | grep -qF "is empty."; then
+    pass "--root anchors elsewhere"
+  else
+    fail "--root anchors elsewhere" "expected docs to have no folders" "$root_out"
+  fi
+  root_eq="$(printf "select files from '/'\nexit\n" | (cd "$FIXTURE" && "$BIN" --root="$FIXTURE/docs") 2>&1)"
+  if printf '%s' "$root_eq" | grep -qF "notes.txt"; then
+    pass "--root=path form works"
+  else
+    fail "--root=path form works" "expected notes.txt" "$root_eq"
+  fi
 
   section "state"
   if [ -d "$HOME/.osql" ]; then

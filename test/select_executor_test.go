@@ -61,7 +61,7 @@ func executorFor(t *testing.T, fsys fs.FS) (*engine.SelectExecutor, *engine.Comp
 
 	vf := &fakeFileSystem{fsys: fsys}
 	compiler := engine.NewCompiler(engine.DefaultFields(vf), engine.DefaultOperators())
-	resolver := engine.NewPathResolver(vf, "/", "/home", "/")
+	resolver := engine.NewPathResolver(vf, "/")
 	return engine.NewSelectExecutor(vf, resolver, compiler, engine.EmptySkipList()), compiler
 }
 
@@ -191,7 +191,7 @@ func TestSelectInfoIsCalledOnlyForMatchedRows(t *testing.T) {
 
 	counting := newCountingFS(files)
 	compiler := engine.NewCompiler(engine.DefaultFields(counting), engine.DefaultOperators())
-	resolver := engine.NewPathResolver(counting, "/", "/home", "/")
+	resolver := engine.NewPathResolver(counting, "/")
 	exec := engine.NewSelectExecutor(counting, resolver, compiler, engine.EmptySkipList())
 
 	tokens, _ := query.NewLexer().Lex("select files from 'root' where type = 'txt'")
@@ -225,7 +225,7 @@ func TestSelectCountChildReadsOnlyCandidateFolders(t *testing.T) {
 
 	counting := newCountingFS(fsys)
 	compiler := engine.NewCompiler(engine.DefaultFields(counting), engine.DefaultOperators())
-	resolver := engine.NewPathResolver(counting, "/", "/home", "/")
+	resolver := engine.NewPathResolver(counting, "/")
 	exec := engine.NewSelectExecutor(counting, resolver, compiler, engine.EmptySkipList())
 
 	tokens, _ := query.NewLexer().Lex("select folders from 'root' where name = 'keep' and count(child) = 2")

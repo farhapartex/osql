@@ -26,7 +26,7 @@ func withPipeline(t *testing.T, cfg shell.Config, fsys fstest.MapFS) shell.Confi
 
 	vf := &fakeFileSystem{fsys: fsys}
 	compiler := engine.NewCompiler(engine.DefaultFields(vf), engine.DefaultOperators())
-	resolver := engine.NewPathResolver(vf, "/", "/home", "/")
+	resolver := engine.NewPathResolver(vf, "/")
 
 	cfg.Lexer = query.NewLexer()
 	cfg.Parser = query.NewParser(compiler)
