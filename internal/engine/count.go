@@ -55,14 +55,38 @@ func (e *CountExecutor) Execute(ctx context.Context, stmt *query.Statement, out 
 		return err
 	}
 
-	return out.Push(Row{Name: stmt.Target.String(), Count: tally.total})
+	for _, row := range tally.rows(stmt.Target) {
+		if err := out.Push(row); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 type countingSink struct {
-	total int64
+	files   int64
+	folders int64
 }
 
-func (c *countingSink) Push(Row) error {
-	c.total++
+func (c *countingSink) Push(r Row) error {
+	if r.IsDir {
+		c.folders++
+		return nil
+	}
+	c.files++
 	return nil
+}
+
+func (c *countingSink) rows(target query.Target) []Row {
+	switch target {
+	case query.TargetFiles:
+		return []Row{{Name: query.TargetFiles.String(), Count: c.files}}
+	case query.TargetFolders:
+		return []Row{{Name: query.TargetFolders.String(), Count: c.folders}}
+	default:
+		return []Row{
+			{Name: query.TargetFiles.String(), Count: c.files},
+			{Name: query.TargetFolders.String(), Count: c.folders},
+		}
+	}
 }
