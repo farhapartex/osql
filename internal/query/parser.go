@@ -9,6 +9,7 @@ import (
 const (
 	VerbSelect       = "select"
 	VerbCount        = "count"
+	VerbOpen         = "open"
 	LegacyVerb       = "select"
 	KeywordFrom      = "from"
 	KeywordRecursive = "recursive"
@@ -77,6 +78,11 @@ func (p stdParser) Parse(tokens []Token) (*Statement, error) {
 		return nil, oerr.NoVerbNeeded(c.peek().Value)
 	}
 
+	if c.peek().IsKeyword(VerbOpen) {
+		c.next()
+		return parseOpen(c)
+	}
+
 	verb := VerbSelect
 	if c.peek().IsKeyword(KeywordCount) && c.peekAt(1).Kind == TokenLParen {
 		verb = VerbCount
@@ -137,6 +143,17 @@ func (p stdParser) Parse(tokens []Token) (*Statement, error) {
 	}
 
 	return stmt, nil
+}
+
+func parseOpen(c *cursor) (*Statement, error) {
+	path, err := parsePath(c)
+	if err != nil {
+		return nil, oerr.MissingFilePath()
+	}
+	if !c.atEOF() {
+		return nil, oerr.UnexpectedInput(c.peek().Value)
+	}
+	return &Statement{Verb: VerbOpen, Path: path}, nil
 }
 
 func parseTarget(c *cursor) (Target, error) {
