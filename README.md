@@ -1,91 +1,55 @@
 # osql
 
-An interactive shell for querying your filesystem in plain statements instead of
-flags and pipes.
+Ask your filesystem questions in plain sentences instead of remembering flags.
 
-```
-$ osql
-osql > files from 'Documents'
-osql > files from 'Documents' where type = 'txt'
-osql > files from '~' recursive where name_like = '%report%'
-osql > count(files) from 'Documents'
-osql > exit
-```
+`osql` opens a small shell where you type things like `files from 'Documents'`
+and get a clean table back. No `find`, no pipes, no man pages. When something
+goes wrong, the message is written to be read by a person.
 
-Results come back as a table of name, type, size, and modified time. Errors are
-written to be read by a person, not parsed from a stack trace.
+It has no third-party dependencies — everything is Go's standard library.
 
-`osql` has no third-party dependencies — the shell, lexer, parser, and executor
-are all standard library.
+## Quick start
 
-## Status
+Build it:
 
-Early development. The build and package skeleton are in place; the query engine
-is not implemented yet, so the binary currently reports its version and exits.
-
-## Requirements
-
-- Go 1.26 or newer
-- macOS or Linux
-
-## Build
-
-```
+```bash
 make build
 ```
 
-The binary lands in `bin/osql`.
+Run it:
 
-## Run
-
-```
+```bash
 ./bin/osql
 ```
 
-## Install
+Then try a few things:
 
-Puts `osql` on your `PATH` via `$GOBIN` (or `$GOPATH/bin`):
-
-```
-make install
-osql
-```
-
-## Other targets
-
-| Target | Does |
-|---|---|
-| `make test` | `go test ./... -race` |
-| `make e2e` | drives the built binary against a real fixture and reports pass/fail |
-| `make bench` | benchmarks with allocation counts |
-| `make vet` | `go vet ./...` |
-| `make fmt` | `go fmt ./...` |
-| `make clean` | removes `bin/` |
-| `make all` | vet, test, then build |
-
-## Planned query syntax
-
-```
-<all|files|folders> from '<path>' [recursive] [where <condition>]
-count(<all|files|folders>) from '<path>' [recursive] [where <condition>]
-```
-
-`count(all)` reports files and folders as two separate rows.
-
-Fields are `name`, `name_like` (with `%` wildcards), `type`, and `count(child)`.
-Conditions combine with `and`. Queries read one directory level unless you add
-`recursive`.
-
-## Paths
-
-`osql` is anchored at a root, which defaults to your home directory. Every path
-is resolved inside it, so these all mean the same folder:
-
-```
+```bash
 files from 'Documents'
-files from '/Documents'
-files from '~/Documents'
+folders from 'Documents' where count(child) > 5
+count(all) from 'Documents'
 ```
 
-`.`, `~`, and `/` all mean the root itself. `..` cannot escape it. Use
-`osql --root /` to anchor a session at the whole filesystem instead.
+Press `Ctrl+D` or type `exit` to leave.
+
+## Documentation
+
+| Page | What it covers |
+|---|---|
+| [Installation](docs/installation.md) | Building, installing, and what you need first |
+| [Queries](docs/queries.md) | Listing files and folders, and how paths work |
+| [Filtering](docs/filtering.md) | The `where` clause: names, types, and patterns |
+| [Counting](docs/counting.md) | Getting a number instead of a list |
+| [Output](docs/output.md) | Reading the table and the size column |
+| [Shell and flags](docs/shell.md) | Built-in commands and command-line options |
+| [Error messages](docs/errors.md) | What each message means and how to fix it |
+| [Your files](docs/files.md) | What osql saves on your machine |
+| [Development](docs/development.md) | Building, testing, and the project layout |
+
+## Status
+
+Early days, and honest about it. Listing, filtering, and counting work. Deleting
+and creating files do not exist yet, and the shell has no arrow-key history —
+see [known limits](docs/shell.md#known-limits).
+
+macOS and Linux only.
