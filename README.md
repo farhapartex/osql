@@ -71,3 +71,17 @@ select <all|files|folders> from '<path>' [recursive] [where <condition>]
 Fields are `name`, `name_like` (with `%` wildcards), `type`, and `count(child)`.
 Conditions combine with `and`. Queries read one directory level unless you add
 `recursive`.
+
+## Paths
+
+`osql` is anchored at a root, which defaults to your home directory. Every path
+is resolved inside it, so these all mean the same folder:
+
+```
+select files from 'Documents'
+select files from '/Documents'
+select files from '~/Documents'
+```
+
+`.`, `~`, and `/` all mean the root itself. `..` cannot escape it. Use
+`osql --root /` to anchor a session at the whole filesystem instead.
