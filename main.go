@@ -87,12 +87,13 @@ func run(args []string) error {
 	selector := engine.NewSelectExecutor(fsys, resolver, compiler, skip)
 	counter := engine.NewCountExecutor(fsys, resolver, compiler, skip)
 	opener := engine.NewOpenExecutor(fsys, resolver)
+	maker := engine.NewNewExecutor(fsys, resolver)
 
 	app := shell.New(shell.Config{
 		Reader:        reader.NewBasic(os.Stdin, os.Stdout, history),
 		Lexer:         query.NewLexer(),
 		Parser:        query.NewParser(compiler),
-		Engine:        engine.NewRegistry(selector, counter, opener),
+		Engine:        engine.NewRegistry(selector, counter, opener, maker),
 		Renderer:      output.NewTable(),
 		CountRenderer: output.NewCount(),
 		Store:         store,
