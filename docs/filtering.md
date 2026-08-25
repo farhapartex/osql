@@ -1,3 +1,5 @@
+<img src="../osql_dualtone.png" alt="osql" width="140" align="right">
+
 # Filtering
 
 Add `where` to narrow down what you get back.

@@ -1,3 +1,5 @@
+<img src="../osql_dualtone.png" alt="osql" width="140" align="right">
+
 # Your files
 
 `osql` keeps two small text files in one folder:

@@ -1,3 +1,5 @@
+<img src="../osql_dualtone.png" alt="osql" width="140" align="right">
+
 # Development
 
 ## Commands

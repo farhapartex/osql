@@ -1,4 +1,6 @@
-# osql
+<p align="center">
+  <img src="osql_dualtone.png" alt="osql" width="380">
+</p>
 
 Ask your filesystem questions in plain sentences instead of remembering flags.
 

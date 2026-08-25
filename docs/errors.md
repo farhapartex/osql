@@ -1,3 +1,5 @@
+<img src="../osql_dualtone.png" alt="osql" width="140" align="right">
+
 # Error messages
 
 Every message tries to say two things: what went wrong, and what to do about it.

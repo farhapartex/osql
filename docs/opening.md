@@ -1,3 +1,5 @@
+<img src="../osql_dualtone.png" alt="osql" width="140" align="right">
+
 # Opening files
 
 `open` prints what is inside a text file, the way `cat` does.
