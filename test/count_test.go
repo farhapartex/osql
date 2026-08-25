@@ -36,7 +36,7 @@ func countExecutorFor(t *testing.T, fsys fs.FS) (*engine.CountExecutor, *engine.
 	return engine.NewCountExecutor(vf, resolver, compiler, engine.EmptySkipList()), compiler
 }
 
-func runCount(t *testing.T, fsys fs.FS, input string) engine.Row {
+func runCountRows(t *testing.T, fsys fs.FS, input string) []engine.Row {
 	t.Helper()
 
 	exec, compiler := countExecutorFor(t, fsys)
@@ -57,10 +57,17 @@ func runCount(t *testing.T, fsys fs.FS, input string) engine.Row {
 	if err := exec.Execute(context.Background(), stmt, sink); err != nil {
 		t.Fatalf("Execute(%q) error = %v", input, err)
 	}
-	if len(sink.Rows) != 1 {
-		t.Fatalf("count produced %d rows, want exactly 1", len(sink.Rows))
+	return sink.Rows
+}
+
+func runCount(t *testing.T, fsys fs.FS, input string) engine.Row {
+	t.Helper()
+
+	rows := runCountRows(t, fsys, input)
+	if len(rows) != 1 {
+		t.Fatalf("count produced %d rows, want exactly 1", len(rows))
 	}
-	return sink.Rows[0]
+	return rows[0]
 }
 
 func TestParseCountForm(t *testing.T) {
@@ -194,11 +201,11 @@ func TestCountTotals(t *testing.T) {
 	}{
 		{"count(files) from 'root'", "files", 4},
 		{"count(folders) from 'root'", "folders", 2},
-		{"count(all) from 'root'", "all", 6},
+
 		{"count(files) from 'root' where type = 'txt'", "files", 2},
 		{"count(files) from 'root' where type = 'log'", "files", 1},
 		{"count(files) from 'root' recursive", "files", 7},
-		{"count(all) from 'root' recursive", "all", 10},
+
 		{"count(files) from 'root' recursive where type = 'txt'", "files", 5},
 		{"count(folders) from 'root' recursive", "folders", 3},
 		{"count(files) from 'root' where type = 'zzz'", "files", 0},
@@ -218,15 +225,73 @@ func TestCountTotals(t *testing.T) {
 	}
 }
 
-func TestCountAllEqualsFilesPlusFolders(t *testing.T) {
+func TestCountAllSplitsIntoFilesAndFolders(t *testing.T) {
 	fsys := countFS()
 
-	files := runCount(t, fsys, "count(files) from 'root' recursive").Count
-	folders := runCount(t, fsys, "count(folders) from 'root' recursive").Count
-	all := runCount(t, fsys, "count(all) from 'root' recursive").Count
+	rows := runCountRows(t, fsys, "count(all) from 'root'")
+	if len(rows) != 2 {
+		t.Fatalf("count(all) produced %d rows, want 2", len(rows))
+	}
+	if rows[0].Name != "files" {
+		t.Errorf("first row = %q, want \"files\"", rows[0].Name)
+	}
+	if rows[1].Name != "folders" {
+		t.Errorf("second row = %q, want \"folders\"", rows[1].Name)
+	}
+	if rows[0].Count != 4 {
+		t.Errorf("files = %d, want 4", rows[0].Count)
+	}
+	if rows[1].Count != 2 {
+		t.Errorf("folders = %d, want 2", rows[1].Count)
+	}
+}
 
-	if files+folders != all {
-		t.Errorf("files(%d) + folders(%d) = %d, but all = %d", files, folders, files+folders, all)
+func TestCountAllRowsMatchTheSingleTargetCounts(t *testing.T) {
+	fsys := countFS()
+
+	for _, scope := range []string{"count(%s) from 'root'", "count(%s) from 'root' recursive"} {
+		all := runCountRows(t, fsys, strings.Replace(scope, "%s", "all", 1))
+		files := runCount(t, fsys, strings.Replace(scope, "%s", "files", 1))
+		folders := runCount(t, fsys, strings.Replace(scope, "%s", "folders", 1))
+
+		if len(all) != 2 {
+			t.Fatalf("count(all) produced %d rows, want 2", len(all))
+		}
+		if all[0].Count != files.Count {
+			t.Errorf("count(all) files row = %d, but count(files) = %d", all[0].Count, files.Count)
+		}
+		if all[1].Count != folders.Count {
+			t.Errorf("count(all) folders row = %d, but count(folders) = %d", all[1].Count, folders.Count)
+		}
+	}
+}
+
+func TestCountAllWithAFilter(t *testing.T) {
+	fsys := countFS()
+
+	rows := runCountRows(t, fsys, "count(all) from 'root' recursive where name_like = '%.txt'")
+	if len(rows) != 2 {
+		t.Fatalf("got %d rows, want 2", len(rows))
+	}
+	if rows[0].Count != 5 {
+		t.Errorf("files matching %%.txt = %d, want 5", rows[0].Count)
+	}
+	if rows[1].Count != 0 {
+		t.Errorf("folders matching %%.txt = %d, want 0", rows[1].Count)
+	}
+}
+
+func TestCountAllOnAnEmptyFolderReportsZeros(t *testing.T) {
+	fsys := fstest.MapFS{"root/sub/.keep": {Data: []byte("")}}
+
+	rows := runCountRows(t, fsys, "count(all) from 'root/sub'")
+	if len(rows) != 2 {
+		t.Fatalf("got %d rows, want 2 even when nothing matches", len(rows))
+	}
+	for _, r := range rows {
+		if r.Name == "folders" && r.Count != 0 {
+			t.Errorf("folders = %d, want 0", r.Count)
+		}
 	}
 }
 
@@ -309,6 +374,20 @@ func TestCountRegistersUnderItsOwnVerb(t *testing.T) {
 	}
 	if counter.Verb() != "count" {
 		t.Errorf("Verb() = %q, want count", counter.Verb())
+	}
+}
+
+func TestCountRendererRendersTwoRows(t *testing.T) {
+	buf := &bytes.Buffer{}
+	rows := []engine.Row{{Name: "files", Count: 52}, {Name: "folders", Count: 29}}
+
+	if err := output.NewCount().Render(buf, rows); err != nil {
+		t.Fatalf("Render error = %v", err)
+	}
+
+	want := "WHAT     COUNT\nfiles    52\nfolders  29\n"
+	if buf.String() != want {
+		t.Errorf("\n got: %q\nwant: %q", buf.String(), want)
 	}
 }
 

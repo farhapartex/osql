@@ -129,6 +129,19 @@ expect_names() {
   fi
 }
 
+expect_names_from_count() {
+  local name="$1" q="$2" want="$3"
+  local out got
+  out="$(osql "$q")"
+  got="$(printf '%s' "$out" | awk '/^WHAT/{h=1;next} h && NF {printf "%s %s|", $1, $2}' | sed 's/|$//')"
+  if [ "$got" = "$want" ]; then
+    pass "$name"
+  else
+    fail "$name" "query: $q" "expected: $want
+     actual: $got"
+  fi
+}
+
 expect_shell_contains() {
   local name="$1" script="$2"; shift 2
   local out; out="$(printf '%s' "$script" | (cd "$FIXTURE" && "$BIN") 2>&1)"
@@ -250,7 +263,8 @@ exit
   section "count()"
   expect_line "count files" "count(files) from 'docs'" "files  5"
   expect_line "count folders" "count(folders) from 'src'" "folders  2"
-  expect_line "count all" "count(all) from 'docs'" "all   5"
+  expect_names_from_count "count all splits into two rows" "count(all) from 'docs'" "files 5|folders 0"
+  expect_names_from_count "count all with folders present" "count(all) from 'src'" "files 3|folders 2"
   expect_contains "count header" "count(files) from 'docs'" "WHAT" "COUNT"
   expect_line "count with a filter" "count(files) from 'docs' where type = 'txt'" "files  3"
   expect_line "count recursive" "count(files) from 'src' recursive" "files  15"
