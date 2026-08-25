@@ -91,7 +91,7 @@ func run(args []string) error {
 		Lexer:    query.NewLexer(),
 		Parser:   query.NewParser(compiler),
 		Engine:   engine.NewRegistry(selector),
-		Renderer: output.NewLines(),
+		Renderer: output.NewTable(),
 		Store:    store,
 		Out:      os.Stdout,
 		Err:      os.Stderr,
