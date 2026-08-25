@@ -8,6 +8,7 @@ import (
 
 const (
 	VerbSelect       = "select"
+	VerbCount        = "count"
 	LegacyVerb       = "select"
 	KeywordFrom      = "from"
 	KeywordRecursive = "recursive"
@@ -55,6 +56,13 @@ func (c *cursor) next() Token {
 	return t
 }
 
+func (c *cursor) peekAt(offset int) Token {
+	if c.pos+offset >= len(c.tokens) {
+		return Token{Kind: TokenEOF}
+	}
+	return c.tokens[c.pos+offset]
+}
+
 func (c *cursor) atEOF() bool {
 	return c.peek().Kind == TokenEOF
 }
@@ -69,9 +77,23 @@ func (p stdParser) Parse(tokens []Token) (*Statement, error) {
 		return nil, oerr.NoVerbNeeded(c.peek().Value)
 	}
 
+	verb := VerbSelect
+	if c.peek().IsKeyword(KeywordCount) && c.peekAt(1).Kind == TokenLParen {
+		verb = VerbCount
+		c.next()
+		c.next()
+	}
+
 	target, err := parseTarget(c)
 	if err != nil {
 		return nil, err
+	}
+
+	if verb == VerbCount {
+		if c.peek().Kind != TokenRParen {
+			return nil, oerr.UnclosedCount()
+		}
+		c.next()
 	}
 
 	if c.atEOF() {
@@ -87,7 +109,7 @@ func (p stdParser) Parse(tokens []Token) (*Statement, error) {
 		return nil, err
 	}
 
-	stmt := &Statement{Verb: VerbSelect, Target: target, Path: path}
+	stmt := &Statement{Verb: verb, Target: target, Path: path}
 
 	if c.peek().IsKeyword(KeywordRecursive) {
 		c.next()
