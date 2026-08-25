@@ -1,13 +1,13 @@
 # osql
 
-An interactive shell for querying your filesystem in SQL-like statements instead
-of flags and pipes.
+An interactive shell for querying your filesystem in plain statements instead of
+flags and pipes.
 
 ```
 $ osql
-osql > select files from 'Documents'
-osql > select files from 'Documents' where type = 'txt'
-osql > select files from '~' recursive where name_like = '%report%'
+osql > files from 'Documents'
+osql > files from 'Documents' where type = 'txt'
+osql > files from '~' recursive where name_like = '%report%'
 osql > exit
 ```
 
@@ -65,7 +65,7 @@ osql
 ## Planned query syntax
 
 ```
-select <all|files|folders> from '<path>' [recursive] [where <condition>]
+<all|files|folders> from '<path>' [recursive] [where <condition>]
 ```
 
 Fields are `name`, `name_like` (with `%` wildcards), `type`, and `count(child)`.
@@ -78,9 +78,9 @@ Conditions combine with `and`. Queries read one directory level unless you add
 is resolved inside it, so these all mean the same folder:
 
 ```
-select files from 'Documents'
-select files from '/Documents'
-select files from '~/Documents'
+files from 'Documents'
+files from '/Documents'
+files from '~/Documents'
 ```
 
 `.`, `~`, and `/` all mean the root itself. `..` cannot escape it. Use
