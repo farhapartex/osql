@@ -74,6 +74,9 @@ reason.
 **No deleting or creating.** `osql` only reads. Nothing you type can change a
 file.
 
+**No paging.** `open` on a huge file prints all of it. There is no `less`-style
+pager yet.
+
 ## Next
 
 - [Your files](files.md) — what gets saved in `~/.osql`

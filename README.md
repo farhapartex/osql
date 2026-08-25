@@ -28,6 +28,7 @@ Then try a few things:
 files from 'Documents'
 folders from 'Documents' where count(child) > 5
 count(all) from 'Documents'
+open 'Documents/notes.txt'
 ```
 
 Press `Ctrl+D` or type `exit` to leave.
@@ -40,6 +41,7 @@ Press `Ctrl+D` or type `exit` to leave.
 | [Queries](docs/queries.md) | Listing files and folders, and how paths work |
 | [Filtering](docs/filtering.md) | The `where` clause: names, types, and patterns |
 | [Counting](docs/counting.md) | Getting a number instead of a list |
+| [Opening files](docs/opening.md) | Printing what is inside a text file |
 | [Output](docs/output.md) | Reading the table and the size column |
 | [Shell and flags](docs/shell.md) | Built-in commands and command-line options |
 | [Error messages](docs/errors.md) | What each message means and how to fix it |
