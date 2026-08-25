@@ -73,8 +73,8 @@ on the list.
 **Ctrl+C leaves the shell** instead of cancelling the line you are typing. Same
 reason.
 
-**No deleting or creating.** `osql` only reads. Nothing you type can change a
-file.
+**No deleting.** `new` can make files and folders, but nothing can remove or
+overwrite them. `new` refuses rather than replace an existing file.
 
 **No paging.** `open` on a huge file prints all of it. There is no `less`-style
 pager yet.

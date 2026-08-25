@@ -152,6 +152,42 @@ You opened a quote and never closed it. The message shows what came after it.
 
 You opened `count(` and never closed it.
 
+## Creating
+
+**`'notes.txt' already exists. Nothing was changed.`**
+
+`new` never overwrites. Pick a different name, or remove the old file yourself.
+
+---
+
+**`Use "file", not "files" — you make one thing at a time: new file 'notes.txt'`**
+
+`new` takes the singular. Listing takes the plural.
+
+---
+
+**`I can make a "file" or a "folder" — not "thing".`**
+
+`new` only knows those two words.
+
+---
+
+**`A folder can't hold data. Drop the data part, or use: new file 'notes.txt' data='hello'`**
+
+`data=` only works with `new file`.
+
+---
+
+**`data needs a value in quotes — for example: data='hello there'`**
+
+You wrote `data=` with nothing after it.
+
+---
+
+**`I couldn't create 'locked/notes.txt': permission denied`**
+
+The folder will not let you write to it.
+
 ## Outcomes, not errors
 
 These two are normal answers, not problems:
