@@ -129,6 +129,19 @@ expect_names() {
   fi
 }
 
+expect_names_from_count() {
+  local name="$1" q="$2" want="$3"
+  local out got
+  out="$(osql "$q")"
+  got="$(printf '%s' "$out" | awk '/^WHAT/{h=1;next} h && NF {printf "%s %s|", $1, $2}' | sed 's/|$//')"
+  if [ "$got" = "$want" ]; then
+    pass "$name"
+  else
+    fail "$name" "query: $q" "expected: $want
+     actual: $got"
+  fi
+}
+
 expect_shell_contains() {
   local name="$1" script="$2"; shift 2
   local out; out="$(printf '%s' "$script" | (cd "$FIXTURE" && "$BIN") 2>&1)"
@@ -191,7 +204,7 @@ main() {
 ' 'type "help" for commands'
   expect_shell_contains "help lists builtins" 'help
 exit
-' "clear" "exit" "history" "files"
+' "clear" "exit" "history" "files" "count("
   expect_shell_contains "blank lines are ignored" '
 
 files from '"'"'docs'"'"'
@@ -246,6 +259,23 @@ exit
   expect_contains "trailing semicolon" "files from 'docs';" "notes.txt"
   expect_contains "operator without spaces" "files from 'docs' where type='txt'" "notes.txt"
   expect_contains "path with spaces stays one token" "files from 'docs' where name = 'q4-report.txt'" "q4-report.txt"
+
+  section "count()"
+  expect_line "count files" "count(files) from 'docs'" "files  5"
+  expect_line "count folders" "count(folders) from 'src'" "folders  2"
+  expect_names_from_count "count all splits into two rows" "count(all) from 'docs'" "files 5|folders 0"
+  expect_names_from_count "count all with folders present" "count(all) from 'src'" "files 3|folders 2"
+  expect_contains "count header" "count(files) from 'docs'" "WHAT" "COUNT"
+  expect_line "count with a filter" "count(files) from 'docs' where type = 'txt'" "files  3"
+  expect_line "count recursive" "count(files) from 'src' recursive" "files  15"
+  expect_line "count zero matches" "count(files) from 'docs' where type = 'zzz'" "files  0"
+  expect_line "count uppercase" "COUNT(FILES) FROM 'docs'" "files  5"
+  expect_absent "count carries no row footer" "count(files) from 'docs'" " files" 
+  expect_line "count singular is corrected" "count(file) from 'docs'" 'Use "files", not "file" — for example: files from '"'"'Documents'"'"''
+  expect_line "count unknown target" "count(bogus) from 'docs'" 'I can list "files", "folders", or "all" — not "bogus".'
+  expect_line "count unclosed paren" "count(files from 'docs'" "count( needs a closing ) — for example: count(files) from 'Documents'"
+  expect_line "count empty parens" "count() from 'docs'" 'I need "files", "folders", or "all" to start — for example: files from '"'"'Documents'"'"''
+  expect_line "count missing path" "count(files) from" 'I need a folder after "from" — for example: files from '"'"'Documents'"'"''
 
   section "output"
   expect_contains "four column header" "all from 'docs'" "NAME" "TYPE" "SIZE" "MODIFIED"

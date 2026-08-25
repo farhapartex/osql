@@ -16,6 +16,7 @@ const (
 	KindUnknownVerb
 	KindNoVerbNeeded
 	KindMissingTarget
+	KindUnclosedCount
 	KindSingularTarget
 	KindUnknownTarget
 	KindMissingFrom
@@ -37,6 +38,7 @@ var kindNames = map[Kind]string{
 	KindUnknownVerb:          "unknown_verb",
 	KindNoVerbNeeded:         "no_verb_needed",
 	KindMissingTarget:        "missing_target",
+	KindUnclosedCount:        "unclosed_count",
 	KindSingularTarget:       "singular_target",
 	KindUnknownTarget:        "unknown_target",
 	KindMissingFrom:          "missing_from",
@@ -103,6 +105,10 @@ func UnknownVerb(got string, known []string) *Error {
 
 func MissingTarget() *Error {
 	return newError(KindMissingTarget, "I need \"files\", \"folders\", or \"all\" to start — for example: files from 'Documents'")
+}
+
+func UnclosedCount() *Error {
+	return newError(KindUnclosedCount, "count( needs a closing ) — for example: count(files) from 'Documents'")
 }
 
 func UnexpectedInput(got string) *Error {

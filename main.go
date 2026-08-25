@@ -83,19 +83,22 @@ func run(args []string) error {
 	fsys := vfs.NewOS(queryRoot)
 	compiler := engine.NewCompiler(engine.DefaultFields(fsys), engine.DefaultOperators())
 	resolver := engine.NewPathResolver(fsys, fsys.Root())
-	selector := engine.NewSelectExecutor(fsys, resolver, compiler, engine.DefaultSkipList())
+	skip := engine.DefaultSkipList()
+	selector := engine.NewSelectExecutor(fsys, resolver, compiler, skip)
+	counter := engine.NewCountExecutor(fsys, resolver, compiler, skip)
 
 	app := shell.New(shell.Config{
-		Reader:   reader.NewBasic(os.Stdin, os.Stdout, history),
-		Lexer:    query.NewLexer(),
-		Parser:   query.NewParser(compiler),
-		Engine:   engine.NewRegistry(selector),
-		Renderer: output.NewTable(),
-		Store:    store,
-		Out:      os.Stdout,
-		Err:      os.Stderr,
-		Version:  version,
-		Commit:   commit,
+		Reader:        reader.NewBasic(os.Stdin, os.Stdout, history),
+		Lexer:         query.NewLexer(),
+		Parser:        query.NewParser(compiler),
+		Engine:        engine.NewRegistry(selector, counter),
+		Renderer:      output.NewTable(),
+		CountRenderer: output.NewCount(),
+		Store:         store,
+		Out:           os.Stdout,
+		Err:           os.Stderr,
+		Version:       version,
+		Commit:        commit,
 	})
 
 	return app.Run()

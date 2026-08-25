@@ -54,6 +54,7 @@ queries:
   all from '<path>'                         one level, everything
   files from '<path>' recursive             the whole subtree
   files from '<path>' where type = 'txt'    filtered
+  count(files) from '<path>'                how many, instead of which
 
 Every path is resolved inside the root, so 'Documents', '/Documents' and
 '~/Documents' all mean the same folder.`

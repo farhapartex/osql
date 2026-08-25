@@ -17,6 +17,7 @@ type Row struct {
 	Size     int64
 	Modified time.Time
 	IsDir    bool
+	Count    int64
 }
 
 type Entry struct {
