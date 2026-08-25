@@ -86,12 +86,13 @@ func run(args []string) error {
 	skip := engine.DefaultSkipList()
 	selector := engine.NewSelectExecutor(fsys, resolver, compiler, skip)
 	counter := engine.NewCountExecutor(fsys, resolver, compiler, skip)
+	opener := engine.NewOpenExecutor(fsys, resolver)
 
 	app := shell.New(shell.Config{
 		Reader:        reader.NewBasic(os.Stdin, os.Stdout, history),
 		Lexer:         query.NewLexer(),
 		Parser:        query.NewParser(compiler),
-		Engine:        engine.NewRegistry(selector, counter),
+		Engine:        engine.NewRegistry(selector, counter, opener),
 		Renderer:      output.NewTable(),
 		CountRenderer: output.NewCount(),
 		Store:         store,

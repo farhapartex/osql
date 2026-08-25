@@ -109,8 +109,14 @@ func (s *Shell) runQuery(line string) error {
 		return oerr.UnknownVerb(stmt.Verb, s.KnownWords())
 	}
 
+	ctx := context.Background()
+
+	if content, ok := executor.(engine.ContentExecutor); ok {
+		return content.WriteContent(ctx, stmt, s.cfg.Out)
+	}
+
 	sink := &engine.SliceSink{}
-	if err := executor.Execute(context.Background(), stmt, sink); err != nil {
+	if err := executor.Execute(ctx, stmt, sink); err != nil {
 		return err
 	}
 

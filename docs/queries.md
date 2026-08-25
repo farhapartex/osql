@@ -1,3 +1,5 @@
+<img src="../osql_dualtone.png" alt="osql" width="140" align="right">
+
 # Queries
 
 Every query starts with **what you want**, then **where to look**.

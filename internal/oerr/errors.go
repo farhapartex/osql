@@ -11,6 +11,10 @@ type Kind int
 const (
 	KindFolderMissing Kind = iota
 	KindPathIsFile
+	KindPathIsFolder
+	KindFileMissing
+	KindBinaryFile
+	KindCannotRead
 	KindNoPermission
 	KindOutsideRoot
 	KindUnknownVerb
@@ -21,6 +25,7 @@ const (
 	KindUnknownTarget
 	KindMissingFrom
 	KindMissingPath
+	KindMissingFilePath
 	KindUnknownField
 	KindWrongOperator
 	KindCountChildOnFiles
@@ -33,6 +38,10 @@ const (
 var kindNames = map[Kind]string{
 	KindFolderMissing:        "folder_missing",
 	KindPathIsFile:           "path_is_file",
+	KindPathIsFolder:         "path_is_folder",
+	KindFileMissing:          "file_missing",
+	KindBinaryFile:           "binary_file",
+	KindCannotRead:           "cannot_read",
 	KindNoPermission:         "no_permission",
 	KindOutsideRoot:          "outside_root",
 	KindUnknownVerb:          "unknown_verb",
@@ -43,6 +52,7 @@ var kindNames = map[Kind]string{
 	KindUnknownTarget:        "unknown_target",
 	KindMissingFrom:          "missing_from",
 	KindMissingPath:          "missing_path",
+	KindMissingFilePath:      "missing_file_path",
 	KindUnknownField:         "unknown_field",
 	KindWrongOperator:        "wrong_operator",
 	KindCountChildOnFiles:    "count_child_on_files",
@@ -86,6 +96,22 @@ func FolderMissing(path string) *Error {
 
 func PathIsFile(path string) *Error {
 	return newError(KindPathIsFile, "'%s' is a file, not a folder. Try: files from 'Documents'", path)
+}
+
+func PathIsFolder(path string) *Error {
+	return newError(KindPathIsFolder, "'%s' is a folder, not a file. Try: open '%s/notes.txt'", path, path)
+}
+
+func FileMissing(path string) *Error {
+	return newError(KindFileMissing, "I couldn't find a file at '%s'. Check the path and try again.", path)
+}
+
+func BinaryFile(path string) *Error {
+	return newError(KindBinaryFile, "'%s' looks like a binary file, so I won't print it. open only shows text.", path)
+}
+
+func CannotRead(path string) *Error {
+	return newError(KindCannotRead, "I couldn't read '%s'. The file may have changed while I was reading it.", path)
 }
 
 func NoPermission(path string) *Error {
@@ -140,6 +166,10 @@ func MissingFrom() *Error {
 
 func MissingPath() *Error {
 	return newError(KindMissingPath, "I need a folder after \"from\" — for example: files from 'Documents'")
+}
+
+func MissingFilePath() *Error {
+	return newError(KindMissingFilePath, "I need a file after \"open\" — for example: open 'notes.txt'")
 }
 
 func UnknownField(got string, known []string) *Error {

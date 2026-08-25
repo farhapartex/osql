@@ -69,6 +69,31 @@ func (r *PathResolver) Resolve(input string) (Resolved, error) {
 	return Resolved{Input: input, Absolute: absolute, FSPath: fsPath}, nil
 }
 
+func (r *PathResolver) ResolveFile(input string) (Resolved, error) {
+	absolute := r.Expand(input)
+
+	fsPath, err := vfs.FSPathUnder(r.root, absolute)
+	if err != nil {
+		if errors.Is(err, vfs.ErrOutsideRoot) {
+			return Resolved{}, oerr.OutsideRoot(input, r.root)
+		}
+		return Resolved{}, oerr.FileMissing(input)
+	}
+
+	info, err := r.fsys.Stat(fsPath)
+	if err != nil {
+		if errors.Is(err, fs.ErrPermission) {
+			return Resolved{}, oerr.NoPermission(input)
+		}
+		return Resolved{}, oerr.FileMissing(input)
+	}
+	if info.IsDir() {
+		return Resolved{}, oerr.PathIsFolder(input)
+	}
+
+	return Resolved{Input: input, Absolute: absolute, FSPath: fsPath}, nil
+}
+
 func classifyStatError(input string, err error) error {
 	switch {
 	case errors.Is(err, fs.ErrPermission):

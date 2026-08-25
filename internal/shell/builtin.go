@@ -103,6 +103,7 @@ func builtinHelp(s *Shell, args []string) error {
 	w := tabwriter.NewWriter(s.cfg.Out, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(w, "files|folders|all from '<path>'\tlist what is in a folder")
 	fmt.Fprintln(w, "count(files|folders|all) from '<path>'\tcount what is in a folder")
+	fmt.Fprintln(w, "open '<path>'\tprint what is inside a text file")
 	for _, b := range s.builtins.All() {
 		fmt.Fprintf(w, "%s\t%s\n", b.Name, b.Summary)
 	}

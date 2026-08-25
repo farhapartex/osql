@@ -1,3 +1,5 @@
+<img src="../osql_dualtone.png" alt="osql" width="140" align="right">
+
 # Error messages
 
 Every message tries to say two things: what went wrong, and what to do about it.
@@ -18,8 +20,28 @@ folders from '.'          # see what is actually there
 
 **`'notes.txt' is a file, not a folder. Try: files from 'Documents'`**
 
-You pointed at a file. `osql` looks *inside* folders, so give it the folder that
-holds the file.
+You pointed at a file. Listing looks *inside* folders, so give it the folder that
+holds the file. To print the file itself, use [`open`](opening.md).
+
+---
+
+**`'Documents' is a folder, not a file. Try: open 'Documents/notes.txt'`**
+
+The opposite problem: `open` prints one file, so it cannot take a folder. To see
+what is in it, use `files from 'Documents'`.
+
+---
+
+**`I couldn't find a file at 'notes.txt'. Check the path and try again.`**
+
+Same as the missing-folder message, but from `open`. Check the spelling.
+
+---
+
+**`'photo.jpg' looks like a binary file, so I won't print it. open only shows text.`**
+
+`open` refuses files that are not text, because printing them can break your
+terminal. See [Opening files](opening.md#binary-files-are-refused).
 
 ---
 
@@ -73,6 +95,12 @@ The word `from` is required between what you want and where to look.
 **`I need a folder after "from" — for example: files from 'Documents'`**
 
 The query stops at `from`. Add the folder.
+
+---
+
+**`I need a file after "open" — for example: open 'notes.txt'`**
+
+You typed `open` with nothing after it.
 
 ---
 

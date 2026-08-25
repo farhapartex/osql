@@ -1,3 +1,5 @@
+<img src="../osql_dualtone.png" alt="osql" width="140" align="right">
+
 # Shell and flags
 
 ## Starting and leaving
@@ -73,6 +75,9 @@ reason.
 
 **No deleting or creating.** `osql` only reads. Nothing you type can change a
 file.
+
+**No paging.** `open` on a huge file prints all of it. There is no `less`-style
+pager yet.
 
 ## Next
 

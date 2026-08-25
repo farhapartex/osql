@@ -1,3 +1,5 @@
+<img src="../osql_dualtone.png" alt="osql" width="140" align="right">
+
 # Counting
 
 Sometimes you only want the number. Wrap what you are asking for in `count(...)`.
