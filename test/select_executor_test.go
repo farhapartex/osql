@@ -109,7 +109,7 @@ func TestSelectExecutorRegistersByVerb(t *testing.T) {
 
 	got, ok := registry.Lookup("select")
 	if !ok {
-		t.Fatal("select executor not registered under its verb")
+		t.Fatal("executor not registered under its verb")
 	}
 	if got != engine.Executor(exec) {
 		t.Error("registry returned a different executor")
@@ -134,23 +134,23 @@ func TestSelectSpecExamplesAgainstAFixture(t *testing.T) {
 		input string
 		want  []string
 	}{
-		{"select all from 'root'", []string{"Makefile", "notes.txt", "one", "q4-report.txt", "report.pdf", "sub", "three"}},
-		{"select files from 'root'", []string{"Makefile", "notes.txt", "q4-report.txt", "report.pdf"}},
-		{"select folders from 'root'", []string{"one", "sub", "three"}},
-		{"select files from 'root' where type = 'txt'", []string{"notes.txt", "q4-report.txt"}},
-		{"select files from 'root' where type = '.txt'", []string{"notes.txt", "q4-report.txt"}},
-		{"select files from 'root' where name = 'notes.txt'", []string{"notes.txt"}},
-		{"select files from 'root' where name != 'notes.txt'", []string{"Makefile", "q4-report.txt", "report.pdf"}},
-		{"select files from 'root' where name_like = '%report%'", []string{"q4-report.txt", "report.pdf"}},
-		{"select files from 'root' where name_like = 'q4%'", []string{"q4-report.txt"}},
-		{"select files from 'root' where name_like = '%.pdf'", []string{"report.pdf"}},
-		{"select files from 'root' where name_like = '%report%' and type = 'txt'", []string{"q4-report.txt"}},
-		{"select folders from 'root' where count(child) > 2", []string{"three"}},
-		{"select folders from 'root' where count(child) = 1", []string{"one"}},
-		{"select folders from 'root' where count(child) <= 1", []string{"one"}},
-		{"select folders from 'root' where count(child) = 2", []string{"sub"}},
-		{"select files from 'root' recursive where type = 'txt'", []string{"notes.txt", "one/only.txt", "q4-report.txt", "sub/deep.txt", "sub/nested/far.txt", "three/a.txt", "three/b.txt", "three/c.txt"}},
-		{"select files from 'root' recursive where name = 'far.txt'", []string{"sub/nested/far.txt"}},
+		{"all from 'root'", []string{"Makefile", "notes.txt", "one", "q4-report.txt", "report.pdf", "sub", "three"}},
+		{"files from 'root'", []string{"Makefile", "notes.txt", "q4-report.txt", "report.pdf"}},
+		{"folders from 'root'", []string{"one", "sub", "three"}},
+		{"files from 'root' where type = 'txt'", []string{"notes.txt", "q4-report.txt"}},
+		{"files from 'root' where type = '.txt'", []string{"notes.txt", "q4-report.txt"}},
+		{"files from 'root' where name = 'notes.txt'", []string{"notes.txt"}},
+		{"files from 'root' where name != 'notes.txt'", []string{"Makefile", "q4-report.txt", "report.pdf"}},
+		{"files from 'root' where name_like = '%report%'", []string{"q4-report.txt", "report.pdf"}},
+		{"files from 'root' where name_like = 'q4%'", []string{"q4-report.txt"}},
+		{"files from 'root' where name_like = '%.pdf'", []string{"report.pdf"}},
+		{"files from 'root' where name_like = '%report%' and type = 'txt'", []string{"q4-report.txt"}},
+		{"folders from 'root' where count(child) > 2", []string{"three"}},
+		{"folders from 'root' where count(child) = 1", []string{"one"}},
+		{"folders from 'root' where count(child) <= 1", []string{"one"}},
+		{"folders from 'root' where count(child) = 2", []string{"sub"}},
+		{"files from 'root' recursive where type = 'txt'", []string{"notes.txt", "one/only.txt", "q4-report.txt", "sub/deep.txt", "sub/nested/far.txt", "three/a.txt", "three/b.txt", "three/c.txt"}},
+		{"files from 'root' recursive where name = 'far.txt'", []string{"sub/nested/far.txt"}},
 	}
 
 	for _, tt := range tests {
@@ -171,12 +171,12 @@ func TestSelectRecursiveIsOptIn(t *testing.T) {
 		"root/sub/below.txt": {Data: []byte("b")},
 	}
 
-	shallow := rowNames(runSelect(t, fsys, "select files from 'root'"))
+	shallow := rowNames(runSelect(t, fsys, "files from 'root'"))
 	if slices.Contains(shallow, "sub/below.txt") {
 		t.Error("a non-recursive select descended into a subdirectory")
 	}
 
-	deep := rowNames(runSelect(t, fsys, "select files from 'root' recursive"))
+	deep := rowNames(runSelect(t, fsys, "files from 'root' recursive"))
 	if !slices.Contains(deep, "sub/below.txt") {
 		t.Error("recursive select did not descend")
 	}
@@ -194,7 +194,7 @@ func TestSelectInfoIsCalledOnlyForMatchedRows(t *testing.T) {
 	resolver := engine.NewPathResolver(counting, "/")
 	exec := engine.NewSelectExecutor(counting, resolver, compiler, engine.EmptySkipList())
 
-	tokens, _ := query.NewLexer().Lex("select files from 'root' where type = 'txt'")
+	tokens, _ := query.NewLexer().Lex("files from 'root' where type = 'txt'")
 	stmt, err := query.NewParser(compiler).Parse(tokens)
 	if err != nil {
 		t.Fatal(err)
@@ -228,7 +228,7 @@ func TestSelectCountChildReadsOnlyCandidateFolders(t *testing.T) {
 	resolver := engine.NewPathResolver(counting, "/")
 	exec := engine.NewSelectExecutor(counting, resolver, compiler, engine.EmptySkipList())
 
-	tokens, _ := query.NewLexer().Lex("select folders from 'root' where name = 'keep' and count(child) = 2")
+	tokens, _ := query.NewLexer().Lex("folders from 'root' where name = 'keep' and count(child) = 2")
 	stmt, err := query.NewParser(compiler).Parse(tokens)
 	if err != nil {
 		t.Fatal(err)
@@ -258,7 +258,7 @@ func TestSelectStreamsIntoTheSink(t *testing.T) {
 	}
 
 	exec, compiler := executorFor(t, fsys)
-	tokens, _ := query.NewLexer().Lex("select files from 'root'")
+	tokens, _ := query.NewLexer().Lex("files from 'root'")
 	stmt, _ := query.NewParser(compiler).Parse(tokens)
 
 	sink := &engine.SliceSink{Limit: 5}
@@ -278,8 +278,8 @@ func TestSelectSurfacesResolverErrors(t *testing.T) {
 		input string
 		kind  oerr.Kind
 	}{
-		{"select files from 'nope'", oerr.KindFolderMissing},
-		{"select files from 'root/a.txt'", oerr.KindPathIsFile},
+		{"files from 'nope'", oerr.KindFolderMissing},
+		{"files from 'root/a.txt'", oerr.KindPathIsFile},
 	}
 
 	for _, tt := range tests {
@@ -304,7 +304,7 @@ func TestSelectRespectsContextCancellation(t *testing.T) {
 	fsys := fstest.MapFS{"root/a.txt": {Data: []byte("a")}}
 	exec, compiler := executorFor(t, fsys)
 
-	tokens, _ := query.NewLexer().Lex("select files from 'root'")
+	tokens, _ := query.NewLexer().Lex("files from 'root'")
 	stmt, _ := query.NewParser(compiler).Parse(tokens)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -318,7 +318,7 @@ func TestSelectRespectsContextCancellation(t *testing.T) {
 func TestSelectEmptyFolderYieldsNoRows(t *testing.T) {
 	fsys := fstest.MapFS{"root/sub/.keep": {Data: []byte("")}}
 
-	got := runSelect(t, fsys, "select files from 'root'")
+	got := runSelect(t, fsys, "files from 'root'")
 	if len(got) != 0 {
 		t.Errorf("got %v, want no rows", rowNames(got))
 	}
@@ -327,7 +327,7 @@ func TestSelectEmptyFolderYieldsNoRows(t *testing.T) {
 func TestSelectNoMatchYieldsNoRows(t *testing.T) {
 	fsys := fstest.MapFS{"root/a.txt": {Data: []byte("a")}}
 
-	got := runSelect(t, fsys, "select files from 'root' where type = 'pdf'")
+	got := runSelect(t, fsys, "files from 'root' where type = 'pdf'")
 	if len(got) != 0 {
 		t.Errorf("got %v, want no rows", rowNames(got))
 	}

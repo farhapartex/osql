@@ -20,7 +20,7 @@ func TestErrorMessagesMatchSpec(t *testing.T) {
 		{
 			"path is a file",
 			oerr.PathIsFile("notes.txt"),
-			"'notes.txt' is a file, not a folder. Try: select files from 'Documents'",
+			"'notes.txt' is a file, not a folder. Try: files from 'Documents'",
 		},
 		{
 			"no permission",
@@ -35,37 +35,37 @@ func TestErrorMessagesMatchSpec(t *testing.T) {
 		{
 			"missing target",
 			oerr.MissingTarget(),
-			`I need "files", "folders", or "all" after "select" — for example: select files from 'Documents'`,
+			`I need "files", "folders", or "all" to start — for example: files from 'Documents'`,
 		},
 		{
 			"unexpected input",
 			oerr.UnexpectedInput("junk"),
-			`I don't understand "junk" here. Try: select files from 'Documents'`,
+			`I don't understand "junk" here. Try: files from 'Documents'`,
 		},
 		{
 			"query ends early",
 			oerr.IncompleteAfter("where"),
-			`The query ends after "where". I need more — for example: select files from 'Documents' where name = 'notes.txt'`,
+			`The query ends after "where". I need more — for example: files from 'Documents' where name = 'notes.txt'`,
 		},
 		{
 			"singular target",
 			oerr.SingularTarget("file"),
-			`Use "files", not "file" — for example: select files from 'Documents'`,
+			`Use "files", not "file" — for example: files from 'Documents'`,
 		},
 		{
 			"unknown target",
-			oerr.UnknownTarget("documents"),
-			`I can select "files", "folders", or "all" — not "documents".`,
+			oerr.UnknownTarget("documents", nil),
+			`I can list "files", "folders", or "all" — not "documents".`,
 		},
 		{
 			"missing from",
 			oerr.MissingFrom(),
-			`I need "from" before the folder — for example: select files from 'Documents'`,
+			`I need "from" before the folder — for example: files from 'Documents'`,
 		},
 		{
 			"missing path",
 			oerr.MissingPath(),
-			`I need a folder after "from" — for example: select files from 'Documents'`,
+			`I need a folder after "from" — for example: files from 'Documents'`,
 		},
 		{
 			"unknown field",
@@ -75,12 +75,12 @@ func TestErrorMessagesMatchSpec(t *testing.T) {
 		{
 			"wrong operator for field",
 			oerr.WrongOperator("name", []string{"=", "!="}),
-			`"name" only works with = and !=. For patterns use name_like: select files from 'Documents' where name_like = '%report%'`,
+			`"name" only works with = and !=. For patterns use name_like: files from 'Documents' where name_like = '%report%'`,
 		},
 		{
 			"count(child) on files",
 			oerr.CountChildOnFiles(),
-			"count(child) describes folders, not files. Try: select folders from 'Documents' where count(child) > 10",
+			"count(child) describes folders, not files. Try: folders from 'Documents' where count(child) > 10",
 		},
 		{
 			"count(child) non-numeric",
@@ -135,8 +135,8 @@ func TestSingularTargetPluralises(t *testing.T) {
 		got  string
 		want string
 	}{
-		{"file", `Use "files", not "file" — for example: select files from 'Documents'`},
-		{"folder", `Use "folders", not "folder" — for example: select folders from 'Documents'`},
+		{"file", `Use "files", not "file" — for example: files from 'Documents'`},
+		{"folder", `Use "folders", not "folder" — for example: folders from 'Documents'`},
 	}
 
 	for _, tt := range tests {
@@ -169,7 +169,7 @@ func TestWrongOperatorJoinsOperatorLists(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := oerr.WrongOperator("count(child)", tt.allowed).Error()
-			want := tt.want + " For patterns use name_like: select files from 'Documents' where name_like = '%report%'"
+			want := tt.want + " For patterns use name_like: files from 'Documents' where name_like = '%report%'"
 			if got != want {
 				t.Errorf("\n got: %s\nwant: %s", got, want)
 			}
@@ -199,7 +199,7 @@ func TestErrorsCarryTheirKind(t *testing.T) {
 		{oerr.UnexpectedInput("junk"), oerr.KindUnexpectedInput},
 		{oerr.IncompleteAfter("where"), oerr.KindIncompleteQuery},
 		{oerr.SingularTarget("file"), oerr.KindSingularTarget},
-		{oerr.UnknownTarget("x"), oerr.KindUnknownTarget},
+		{oerr.UnknownTarget("x", nil), oerr.KindUnknownTarget},
 		{oerr.MissingFrom(), oerr.KindMissingFrom},
 		{oerr.MissingPath(), oerr.KindMissingPath},
 		{oerr.UnknownField("x", nil), oerr.KindUnknownField},

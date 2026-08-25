@@ -136,13 +136,13 @@ func TestBasicAddHistoryForwardsLines(t *testing.T) {
 	hist := &errAppender{}
 	r := reader.NewBasic(strings.NewReader(""), &bytes.Buffer{}, hist)
 
-	r.AddHistory("select files from '.'")
+	r.AddHistory("files from '.'")
 	r.AddHistory("exit")
 
 	if len(hist.lines) != 2 {
 		t.Fatalf("history received %d lines, want 2", len(hist.lines))
 	}
-	if hist.lines[0] != "select files from '.'" || hist.lines[1] != "exit" {
+	if hist.lines[0] != "files from '.'" || hist.lines[1] != "exit" {
 		t.Errorf("history lines = %v", hist.lines)
 	}
 	if r.Err() != nil {
@@ -153,7 +153,7 @@ func TestBasicAddHistoryForwardsLines(t *testing.T) {
 func TestBasicAddHistoryToleratesNilAppender(t *testing.T) {
 	r := reader.NewBasic(strings.NewReader(""), &bytes.Buffer{}, nil)
 
-	r.AddHistory("select files from '.'")
+	r.AddHistory("files from '.'")
 
 	if r.Err() != nil {
 		t.Errorf("Err() = %v, want nil with no history configured", r.Err())
@@ -164,7 +164,7 @@ func TestBasicAddHistoryRecordsFailureWithoutPanicking(t *testing.T) {
 	hist := &errAppender{err: errors.New("disk full")}
 	r := reader.NewBasic(strings.NewReader(""), &bytes.Buffer{}, hist)
 
-	r.AddHistory("select files from '.'")
+	r.AddHistory("files from '.'")
 
 	if r.Err() == nil {
 		t.Error("Err() = nil after a failed append; the failure must be observable")

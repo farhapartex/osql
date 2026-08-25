@@ -133,8 +133,10 @@ func TestHelpIsGeneratedFromTheRegistry(t *testing.T) {
 			t.Errorf("help output omits summary for %q", b.Name)
 		}
 	}
-	if !strings.Contains(got, "select") {
-		t.Error("help output does not mention the select statement")
+	for _, want := range []string{"files", "folders", "all", "from"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("help output does not mention %q from the query form", want)
+		}
 	}
 }
 
@@ -180,7 +182,7 @@ func TestHistoryBuiltinNumbersLines(t *testing.T) {
 	out := &bytes.Buffer{}
 	app, hist := shellWithStore(t, out)
 
-	for _, line := range []string{"select files from '.'", "select all from '~'"} {
+	for _, line := range []string{"files from '.'", "all from '~'"} {
 		if err := hist.Append(line); err != nil {
 			t.Fatal(err)
 		}
@@ -191,10 +193,10 @@ func TestHistoryBuiltinNumbersLines(t *testing.T) {
 	}
 
 	got := out.String()
-	if !strings.Contains(got, "1  select files from '.'") {
+	if !strings.Contains(got, "1  files from '.'") {
 		t.Errorf("first entry not numbered 1:\n%s", got)
 	}
-	if !strings.Contains(got, "2  select all from '~'") {
+	if !strings.Contains(got, "2  all from '~'") {
 		t.Errorf("second entry not numbered 2:\n%s", got)
 	}
 }
@@ -230,7 +232,7 @@ func TestHistoryClearEmptiesTheFile(t *testing.T) {
 	out := &bytes.Buffer{}
 	app, hist := shellWithStore(t, out)
 
-	hist.Append("select files from '.'")
+	hist.Append("files from '.'")
 
 	if err := app.Dispatch("history clear"); err != nil {
 		t.Fatalf("history clear error = %v", err)
@@ -267,5 +269,5 @@ func TestHistoryWithoutStoreFails(t *testing.T) {
 }
 
 func lineNumbered(i int) string {
-	return fmt.Sprintf("select files from 'dir-%d'", i)
+	return fmt.Sprintf("files from 'dir-%d'", i)
 }

@@ -62,34 +62,34 @@ func TestLexFullStatements(t *testing.T) {
 		want  []tok
 	}{
 		{
-			"simple select",
-			"select files from 'Documents'",
-			[]tok{{ident, "select"}, {ident, "files"}, {ident, "from"}, {str, "Documents"}},
+			"simple query",
+			"files from 'Documents'",
+			[]tok{{ident, "files"}, {ident, "from"}, {str, "Documents"}},
 		},
 		{
 			"bare word path",
-			"select files from Documents",
-			[]tok{{ident, "select"}, {ident, "files"}, {ident, "from"}, {ident, "Documents"}},
+			"files from Documents",
+			[]tok{{ident, "files"}, {ident, "from"}, {ident, "Documents"}},
 		},
 		{
 			"where clause",
-			"select files from 'd' where type = 'txt'",
-			[]tok{{ident, "select"}, {ident, "files"}, {ident, "from"}, {str, "d"}, {ident, "where"}, {ident, "type"}, {op, "="}, {str, "txt"}},
+			"files from 'd' where type = 'txt'",
+			[]tok{{ident, "files"}, {ident, "from"}, {str, "d"}, {ident, "where"}, {ident, "type"}, {op, "="}, {str, "txt"}},
 		},
 		{
 			"recursive",
-			"select files from '~' recursive",
-			[]tok{{ident, "select"}, {ident, "files"}, {ident, "from"}, {str, "~"}, {ident, "recursive"}},
+			"files from '~' recursive",
+			[]tok{{ident, "files"}, {ident, "from"}, {str, "~"}, {ident, "recursive"}},
 		},
 		{
 			"count child",
-			"select folders from 'src' where count(child) > 10",
-			[]tok{{ident, "select"}, {ident, "folders"}, {ident, "from"}, {str, "src"}, {ident, "where"}, {ident, "count"}, {lp, "("}, {ident, "child"}, {rp, ")"}, {op, ">"}, {ident, "10"}},
+			"folders from 'src' where count(child) > 10",
+			[]tok{{ident, "folders"}, {ident, "from"}, {str, "src"}, {ident, "where"}, {ident, "count"}, {lp, "("}, {ident, "child"}, {rp, ")"}, {op, ">"}, {ident, "10"}},
 		},
 		{
 			"two predicates",
-			"select files from 's' where name_like = 'test_%' and type = 'go'",
-			[]tok{{ident, "select"}, {ident, "files"}, {ident, "from"}, {str, "s"}, {ident, "where"}, {ident, "name_like"}, {op, "="}, {str, "test_%"}, {ident, "and"}, {ident, "type"}, {op, "="}, {str, "go"}},
+			"files from 's' where name_like = 'test_%' and type = 'go'",
+			[]tok{{ident, "files"}, {ident, "from"}, {str, "s"}, {ident, "where"}, {ident, "name_like"}, {op, "="}, {str, "test_%"}, {ident, "and"}, {ident, "type"}, {op, "="}, {str, "go"}},
 		},
 	}
 
@@ -185,9 +185,9 @@ func TestLexQuotedStringsKeepTheirContents(t *testing.T) {
 }
 
 func TestLexPreservesCase(t *testing.T) {
-	got := lexTokens(t, "SELECT Files FROM 'Documents' WHERE type = '.TXT'")
+	got := lexTokens(t, "FILES FROM 'Documents' WHERE type = '.TXT'")
 
-	if got[0].value != "SELECT" {
+	if got[0].value != "FILES" {
 		t.Errorf("keyword case not preserved: %q; folding is the parser's job", got[0].value)
 	}
 	for _, tk := range got {
@@ -202,13 +202,12 @@ func TestLexPreservesCase(t *testing.T) {
 
 func TestLexCollapsesWhitespaceRuns(t *testing.T) {
 	tests := []string{
-		"select   files\tfrom\n'a'",
-		"  select files from 'a'  ",
-		"select\t\t files \r\n from 'a'",
+		"  files\tfrom\n'a'",
+		"  files from 'a'  ",
+		"files\t\t from \r\n 'a'",
 	}
 
 	want := []tok{
-		{query.TokenIdent, "select"},
 		{query.TokenIdent, "files"},
 		{query.TokenIdent, "from"},
 		{query.TokenString, "a"},
@@ -236,10 +235,10 @@ func TestLexSemicolonTerminatesStatement(t *testing.T) {
 		input string
 		want  []tok
 	}{
-		{"trailing", "select files from 'a';", []tok{{query.TokenIdent, "select"}, {query.TokenIdent, "files"}, {query.TokenIdent, "from"}, {query.TokenString, "a"}}},
-		{"trailing with space", "select files from 'a' ;", []tok{{query.TokenIdent, "select"}, {query.TokenIdent, "files"}, {query.TokenIdent, "from"}, {query.TokenString, "a"}}},
-		{"repeated", "select files from 'a';;;", []tok{{query.TokenIdent, "select"}, {query.TokenIdent, "files"}, {query.TokenIdent, "from"}, {query.TokenString, "a"}}},
-		{"text after is ignored", "select files from 'a'; junk here", []tok{{query.TokenIdent, "select"}, {query.TokenIdent, "files"}, {query.TokenIdent, "from"}, {query.TokenString, "a"}}},
+		{"trailing", "files from 'a';", []tok{{query.TokenIdent, "files"}, {query.TokenIdent, "from"}, {query.TokenString, "a"}}},
+		{"trailing with space", "files from 'a' ;", []tok{{query.TokenIdent, "files"}, {query.TokenIdent, "from"}, {query.TokenString, "a"}}},
+		{"repeated", "files from 'a';;;", []tok{{query.TokenIdent, "files"}, {query.TokenIdent, "from"}, {query.TokenString, "a"}}},
+		{"text after is ignored", "files from 'a'; junk here", []tok{{query.TokenIdent, "files"}, {query.TokenIdent, "from"}, {query.TokenString, "a"}}},
 		{"leading semicolon yields nothing", ";select files", nil},
 	}
 
@@ -267,9 +266,9 @@ func TestLexUnclosedQuote(t *testing.T) {
 		name  string
 		input string
 	}{
-		{"open at end", "select files from 'Documents"},
+		{"open at end", "files from 'Documents"},
 		{"lone quote", "'"},
-		{"odd number of quotes", "select files from 'a' where name = 'b"},
+		{"odd number of quotes", "files from 'a' where name = 'b"},
 	}
 
 	for _, tt := range tests {
@@ -286,7 +285,7 @@ func TestLexUnclosedQuote(t *testing.T) {
 }
 
 func TestLexUnclosedQuoteReportsTheFragment(t *testing.T) {
-	_, err := query.NewLexer().Lex("select files from 'Documents")
+	_, err := query.NewLexer().Lex("files from 'Documents")
 	if err == nil {
 		t.Fatal("expected an error")
 	}
@@ -296,12 +295,12 @@ func TestLexUnclosedQuoteReportsTheFragment(t *testing.T) {
 }
 
 func TestLexTokenPositions(t *testing.T) {
-	got, err := query.NewLexer().Lex("select files from 'a'")
+	got, err := query.NewLexer().Lex("files from 'a'")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	wantPos := []int{0, 7, 13, 18, 21}
+	wantPos := []int{0, 6, 11, 14}
 	if len(got) != len(wantPos) {
 		t.Fatalf("got %d tokens, want %d", len(got), len(wantPos))
 	}
@@ -347,13 +346,13 @@ func TestLexAdjacentQuotedStrings(t *testing.T) {
 }
 
 func TestLexLongInput(t *testing.T) {
-	long := "select files from '" + strings.Repeat("a", 100000) + "'"
+	long := "files from '" + strings.Repeat("a", 100000) + "'"
 
 	got := lexTokens(t, long)
-	if len(got) != 4 {
-		t.Fatalf("got %d tokens, want 4", len(got))
+	if len(got) != 3 {
+		t.Fatalf("got %d tokens, want 3", len(got))
 	}
-	if len(got[3].value) != 100000 {
+	if len(got[2].value) != 100000 {
 		t.Errorf("long path truncated to %d bytes", len(got[3].value))
 	}
 }
@@ -382,8 +381,8 @@ func TestTokenIsKeyword(t *testing.T) {
 
 func FuzzLex(f *testing.F) {
 	seeds := []string{
-		"select files from 'Documents'",
-		"select folders from 'src' where count(child) <= 2",
+		"files from 'Documents'",
+		"folders from 'src' where count(child) <= 2",
 		"type='txt'",
 		"'unterminated",
 		";",

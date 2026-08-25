@@ -191,102 +191,103 @@ main() {
 ' 'type "help" for commands'
   expect_shell_contains "help lists builtins" 'help
 exit
-' "clear" "exit" "history" "select"
+' "clear" "exit" "history" "files"
   expect_shell_contains "blank lines are ignored" '
 
-select files from '"'"'docs'"'"'
+files from '"'"'docs'"'"'
 exit
 ' "notes.txt"
-  expect_shell_contains "shell survives a bad command" 'slect nonsense
-select files from '"'"'docs'"'"'
+  expect_shell_contains "shell survives a bad command" 'filez from '"'"'docs'"'"'
+files from '"'"'docs'"'"'
 exit
-' 'Did you mean "select"?' "notes.txt"
+' 'Did you mean "files"?' "notes.txt"
 
   section "select — targets"
-  expect_names "all lists files and folders" "select all from 'docs'" "Makefile notes.txt q4-report.txt report.pdf secret.txt"
-  expect_names "files excludes folders" "select files from 'src'" "helper.go test_lexer.go test_parser.go"
-  expect_names "folders excludes files" "select folders from 'src'" "big one"
+  expect_names "all lists files and folders" "all from 'docs'" "Makefile notes.txt q4-report.txt report.pdf secret.txt"
+  expect_names "files excludes folders" "files from 'src'" "helper.go test_lexer.go test_parser.go"
+  expect_names "folders excludes files" "folders from 'src'" "big one"
 
   section "select — depth"
-  expect_absent "non-recursive stays at one level" "select files from 'nested'" "far.txt"
-  expect_contains "recursive descends" "select files from 'nested' recursive" "deep/far.txt"
-  expect_names "recursive relative paths" "select files from 'src' recursive where type = 'txt'" "big/f1.txt big/f10.txt big/f11.txt big/f2.txt big/f3.txt big/f4.txt big/f5.txt big/f6.txt big/f7.txt big/f8.txt big/f9.txt one/only.txt"
+  expect_absent "non-recursive stays at one level" "files from 'nested'" "far.txt"
+  expect_contains "recursive descends" "files from 'nested' recursive" "deep/far.txt"
+  expect_names "recursive relative paths" "files from 'src' recursive where type = 'txt'" "big/f1.txt big/f10.txt big/f11.txt big/f2.txt big/f3.txt big/f4.txt big/f5.txt big/f6.txt big/f7.txt big/f8.txt big/f9.txt one/only.txt"
 
   section "select — where"
-  expect_names "type filter" "select files from 'docs' where type = 'txt'" "notes.txt q4-report.txt secret.txt"
-  expect_names "type filter with dot is the same query" "select files from 'docs' where type = '.txt'" "notes.txt q4-report.txt secret.txt"
-  expect_names "name exact" "select files from 'docs' where name = 'notes.txt'" "notes.txt"
-  expect_names "name negated" "select files from 'docs' where name != 'notes.txt'" "Makefile q4-report.txt report.pdf secret.txt"
-  expect_names "name_like contains" "select files from 'docs' where name_like = '%report%'" "q4-report.txt report.pdf"
-  expect_names "name_like prefix" "select files from 'docs' where name_like = 'q4%'" "q4-report.txt"
-  expect_names "name_like suffix" "select files from 'docs' where name_like = '%.pdf'" "report.pdf"
-  expect_names "name_like with star alias" "select files from 'docs' where name_like = '*report*'" "q4-report.txt report.pdf"
-  expect_names "two predicates with and" "select files from 'src' where name_like = 'test_%' and type = 'go'" "test_lexer.go test_parser.go"
+  expect_names "type filter" "files from 'docs' where type = 'txt'" "notes.txt q4-report.txt secret.txt"
+  expect_names "type filter with dot is the same query" "files from 'docs' where type = '.txt'" "notes.txt q4-report.txt secret.txt"
+  expect_names "name exact" "files from 'docs' where name = 'notes.txt'" "notes.txt"
+  expect_names "name negated" "files from 'docs' where name != 'notes.txt'" "Makefile q4-report.txt report.pdf secret.txt"
+  expect_names "name_like contains" "files from 'docs' where name_like = '%report%'" "q4-report.txt report.pdf"
+  expect_names "name_like prefix" "files from 'docs' where name_like = 'q4%'" "q4-report.txt"
+  expect_names "name_like suffix" "files from 'docs' where name_like = '%.pdf'" "report.pdf"
+  expect_names "name_like with star alias" "files from 'docs' where name_like = '*report*'" "q4-report.txt report.pdf"
+  expect_names "two predicates with and" "files from 'src' where name_like = 'test_%' and type = 'go'" "test_lexer.go test_parser.go"
 
   section "select — count(child)"
-  expect_names "count greater than" "select folders from 'src' where count(child) > 10" "big"
-  expect_names "count equal" "select folders from 'src' where count(child) = 1" "one"
-  expect_names "count less or equal" "select folders from 'src' where count(child) <= 1" "one"
+  expect_names "count greater than" "folders from 'src' where count(child) > 10" "big"
+  expect_names "count equal" "folders from 'src' where count(child) = 1" "one"
+  expect_names "count less or equal" "folders from 'src' where count(child) <= 1" "one"
 
   section "select — paths are root-relative"
-  expect_names "bare path" "select files from 'docs' where type = 'txt'" "notes.txt q4-report.txt secret.txt"
-  expect_names "leading slash means the root, not the filesystem" "select files from '/docs' where type = 'txt'" "notes.txt q4-report.txt secret.txt"
-  expect_names "tilde form" "select files from '~/docs' where type = 'txt'" "notes.txt q4-report.txt secret.txt"
-  expect_names "dot prefix form" "select files from './docs' where type = 'txt'" "notes.txt q4-report.txt secret.txt"
-  expect_contains "bare word without quotes" "select files from docs" "notes.txt"
-  expect_contains "dot is the root" "select files from '.'" "app.log"
-  expect_contains "tilde is the root" "select folders from '~'" "docs"
-  expect_contains "slash is the root" "select folders from '/'" "docs"
-  expect_contains "nested rooted path" "select files from '/nested/deep'" "far.txt"
-  expect_line "escaping the root is refused" "select files from '../..'" "I can only look inside '$HOME'. '../..' points outside it."
-  expect_line "system paths are not reachable" "select files from '/etc'" "I couldn't find a folder at '/etc'. Check the path and try again."
+  expect_names "bare path" "files from 'docs' where type = 'txt'" "notes.txt q4-report.txt secret.txt"
+  expect_names "leading slash means the root, not the filesystem" "files from '/docs' where type = 'txt'" "notes.txt q4-report.txt secret.txt"
+  expect_names "tilde form" "files from '~/docs' where type = 'txt'" "notes.txt q4-report.txt secret.txt"
+  expect_names "dot prefix form" "files from './docs' where type = 'txt'" "notes.txt q4-report.txt secret.txt"
+  expect_contains "bare word without quotes" "files from docs" "notes.txt"
+  expect_contains "dot is the root" "files from '.'" "app.log"
+  expect_contains "tilde is the root" "folders from '~'" "docs"
+  expect_contains "slash is the root" "folders from '/'" "docs"
+  expect_contains "nested rooted path" "files from '/nested/deep'" "far.txt"
+  expect_line "escaping the root is refused" "files from '../..'" "I can only look inside '$HOME'. '../..' points outside it."
+  expect_line "system paths are not reachable" "files from '/etc'" "I couldn't find a folder at '/etc'. Check the path and try again."
 
   section "select — lexing"
-  expect_contains "uppercase keywords" "SELECT FILES FROM 'docs'" "notes.txt"
-  expect_contains "trailing semicolon" "select files from 'docs';" "notes.txt"
-  expect_contains "operator without spaces" "select files from 'docs' where type='txt'" "notes.txt"
-  expect_contains "path with spaces stays one token" "select files from 'docs' where name = 'q4-report.txt'" "q4-report.txt"
+  expect_contains "uppercase keywords" "FILES FROM 'docs'" "notes.txt"
+  expect_contains "trailing semicolon" "files from 'docs';" "notes.txt"
+  expect_contains "operator without spaces" "files from 'docs' where type='txt'" "notes.txt"
+  expect_contains "path with spaces stays one token" "files from 'docs' where name = 'q4-report.txt'" "q4-report.txt"
 
   section "output"
-  expect_contains "four column header" "select all from 'docs'" "NAME" "TYPE" "SIZE" "MODIFIED"
-  expect_contains "folders show folder and no size" "select folders from 'src'" "folder"
-  expect_line "footer counts results" "select files from 'docs' where name = 'notes.txt'" "1 files"
-  expect_contains "extensionless file shows an em dash" "select files from 'docs' where name = 'Makefile'" "—"
-  expect_contains "bytes have no decimal" "select files from '.' where name = 'size_1023.bin'" "1023 B"
-  expect_contains "kilobytes at the boundary" "select files from '.' where name = 'size_1024.bin'" "1.0 KB"
-  expect_contains "1048575 promotes to megabytes" "select files from '.' where name = 'size_1048575.bin'" "1.0 MB"
-  expect_absent "never shows 1024 of a unit" "select files from '.' where name = 'size_1048575.bin'" "1024.0 KB"
+  expect_contains "four column header" "all from 'docs'" "NAME" "TYPE" "SIZE" "MODIFIED"
+  expect_contains "folders show folder and no size" "folders from 'src'" "folder"
+  expect_line "footer counts results" "files from 'docs' where name = 'notes.txt'" "1 files"
+  expect_contains "extensionless file shows an em dash" "files from 'docs' where name = 'Makefile'" "—"
+  expect_contains "bytes have no decimal" "files from '.' where name = 'size_1023.bin'" "1023 B"
+  expect_contains "kilobytes at the boundary" "files from '.' where name = 'size_1024.bin'" "1.0 KB"
+  expect_contains "1048575 promotes to megabytes" "files from '.' where name = 'size_1048575.bin'" "1.0 MB"
+  expect_absent "never shows 1024 of a unit" "files from '.' where name = 'size_1048575.bin'" "1024.0 KB"
 
   section "outcomes"
-  expect_line "no matches" "select files from 'docs' where type = 'zzz'" "No files matched."
-  expect_line "empty folder" "select folders from 'empty_ish'" "'empty_ish' is empty."
+  expect_line "no matches" "files from 'docs' where type = 'zzz'" "No files matched."
+  expect_line "empty folder" "folders from 'empty_ish'" "'empty_ish' is empty."
 
   section "errors"
-  expect_line "folder missing" "select files from 'Documnets'" "I couldn't find a folder at 'Documnets'. Check the path and try again."
-  expect_line "path is a file" "select files from 'app.log'" "'app.log' is a file, not a folder. Try: select files from 'Documents'"
-  expect_line "unknown verb suggests" "slect files from 'docs'" 'I don'"'"'t know how to "slect". Did you mean "select"?'
-  expect_line "singular target" "select file from 'docs'" 'Use "files", not "file" — for example: select files from '"'"'Documents'"'"''
-  expect_line "unknown target" "select documents from 'docs'" 'I can select "files", "folders", or "all" — not "documents".'
-  expect_line "missing target" "select from 'docs'" 'I need "files", "folders", or "all" after "select" — for example: select files from '"'"'Documents'"'"''
-  expect_line "missing from" "select files 'docs'" 'I need "from" before the folder — for example: select files from '"'"'Documents'"'"''
-  expect_line "missing path" "select files from" 'I need a folder after "from" — for example: select files from '"'"'Documents'"'"''
-  expect_line "unknown field" "select files from 'docs' where extension = 'txt'" 'I don'"'"'t know the field "extension". I understand: name, name_like, type, count(child)'
-  expect_contains "wrong operator for field" "select files from 'docs' where name < 'b'" '"name" only works with = and !=.'
-  expect_line "count(child) on files" "select files from 'docs' where count(child) > 1" "count(child) describes folders, not files. Try: select folders from 'Documents' where count(child) > 10"
-  expect_line "count(child) needs a number" "select folders from 'src' where count(child) > 'many'" "count(child) needs a number — for example: count(child) > 10"
-  expect_line "unclosed quote" "select files from 'docs" "This quote is never closed: 'docs — add a closing '"
-  expect_contains "unexpected trailing input" "select files from 'docs' junk" 'I don'"'"'t understand "junk" here.'
-  expect_contains "query ends early" "select files from 'docs' where" 'The query ends after "where".'
-  expect_contains "or is not supported yet" "select files from 'docs' where name = 'a' or name = 'b'" 'I don'"'"'t understand "or" here.'
+  expect_line "folder missing" "files from 'Documnets'" "I couldn't find a folder at 'Documnets'. Check the path and try again."
+  expect_line "path is a file" "files from 'app.log'" "'app.log' is a file, not a folder. Try: files from 'Documents'"
+  expect_line "unknown word suggests a target" "filez from 'docs'" 'I can list "files", "folders", or "all" — not "filez". Did you mean "files"?'
+  expect_line "singular target" "file from 'docs'" 'Use "files", not "file" — for example: files from '"'"'Documents'"'"''
+  expect_line "removed select verb is explained" "select files from 'docs'" 'Queries don'"'"'t need "select" — start with what you want: files from '"'"'Documents'"'"''
+  expect_line "unknown target" "documents from 'docs'" 'I can list "files", "folders", or "all" — not "documents".'
+  expect_line "missing target" "from 'docs'" 'I need "files", "folders", or "all" to start — for example: files from '"'"'Documents'"'"''
+  expect_line "missing from" "files 'docs'" 'I need "from" before the folder — for example: files from '"'"'Documents'"'"''
+  expect_line "missing path" "files from" 'I need a folder after "from" — for example: files from '"'"'Documents'"'"''
+  expect_line "unknown field" "files from 'docs' where extension = 'txt'" 'I don'"'"'t know the field "extension". I understand: name, name_like, type, count(child)'
+  expect_contains "wrong operator for field" "files from 'docs' where name < 'b'" '"name" only works with = and !=.'
+  expect_line "count(child) on files" "files from 'docs' where count(child) > 1" "count(child) describes folders, not files. Try: folders from 'Documents' where count(child) > 10"
+  expect_line "count(child) needs a number" "folders from 'src' where count(child) > 'many'" "count(child) needs a number — for example: count(child) > 10"
+  expect_line "unclosed quote" "files from 'docs" "This quote is never closed: 'docs — add a closing '"
+  expect_contains "unexpected trailing input" "files from 'docs' junk" 'I don'"'"'t understand "junk" here.'
+  expect_contains "query ends early" "files from 'docs' where" 'The query ends after "where".'
+  expect_contains "or is not supported yet" "files from 'docs' where name = 'a' or name = 'b'" 'I don'"'"'t understand "or" here.'
 
   section "--root override"
-  root_out="$(printf "select folders from '/'\nexit\n" | (cd "$FIXTURE" && "$BIN" --root "$FIXTURE/docs") 2>&1)"
+  root_out="$(printf "folders from '/'\nexit\n" | (cd "$FIXTURE" && "$BIN" --root "$FIXTURE/docs") 2>&1)"
   if printf '%s' "$root_out" | grep -qF "is empty."; then
     pass "--root anchors elsewhere"
   else
     fail "--root anchors elsewhere" "expected docs to have no folders" "$root_out"
   fi
-  root_eq="$(printf "select files from '/'\nexit\n" | (cd "$FIXTURE" && "$BIN" --root="$FIXTURE/docs") 2>&1)"
+  root_eq="$(printf "files from '/'\nexit\n" | (cd "$FIXTURE" && "$BIN" --root="$FIXTURE/docs") 2>&1)"
   if printf '%s' "$root_eq" | grep -qF "notes.txt"; then
     pass "--root=path form works"
   else
@@ -301,13 +302,13 @@ exit
     hperms="$(stat -f '%Lp' "$HOME/.osql/history.txt" 2>/dev/null || stat -c '%a' "$HOME/.osql/history.txt")"
     [ "$hperms" = "600" ] && pass "history.txt is 0600" || fail "history.txt is 0600" "mode is $hperms"
     grep -q "^version:" "$HOME/.osql/system.txt" && pass "system.txt records a version" || fail "system.txt records a version" "no version line"
-    grep -qF "select files from 'docs'" "$HOME/.osql/history.txt" && pass "commands are recorded in history" || fail "commands are recorded in history" "query not found in history.txt"
+    grep -qF "files from 'docs'" "$HOME/.osql/history.txt" && pass "commands are recorded in history" || fail "commands are recorded in history" "query not found in history.txt"
   else
     fail "state directory created on startup" "$HOME/.osql does not exist"
   fi
 
   rm -rf "$HOME/.osql"
-  printf "select files from 'docs'\nexit\n" | (cd "$FIXTURE" && "$BIN" --no-history) >/dev/null 2>&1
+  printf "files from 'docs'\nexit\n" | (cd "$FIXTURE" && "$BIN" --no-history) >/dev/null 2>&1
   if [ -f "$HOME/.osql/history.txt" ]; then
     fail "--no-history writes no history file" "history.txt exists"
   else
