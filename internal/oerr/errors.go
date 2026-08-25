@@ -14,6 +14,7 @@ const (
 	KindNoPermission
 	KindOutsideRoot
 	KindUnknownVerb
+	KindNoVerbNeeded
 	KindMissingTarget
 	KindSingularTarget
 	KindUnknownTarget
@@ -34,6 +35,7 @@ var kindNames = map[Kind]string{
 	KindNoPermission:         "no_permission",
 	KindOutsideRoot:          "outside_root",
 	KindUnknownVerb:          "unknown_verb",
+	KindNoVerbNeeded:         "no_verb_needed",
 	KindMissingTarget:        "missing_target",
 	KindSingularTarget:       "singular_target",
 	KindUnknownTarget:        "unknown_target",
@@ -81,7 +83,7 @@ func FolderMissing(path string) *Error {
 }
 
 func PathIsFile(path string) *Error {
-	return newError(KindPathIsFile, "'%s' is a file, not a folder. Try: select files from 'Documents'", path)
+	return newError(KindPathIsFile, "'%s' is a file, not a folder. Try: files from 'Documents'", path)
 }
 
 func NoPermission(path string) *Error {
@@ -100,31 +102,38 @@ func UnknownVerb(got string, known []string) *Error {
 }
 
 func MissingTarget() *Error {
-	return newError(KindMissingTarget, "I need \"files\", \"folders\", or \"all\" after \"select\" — for example: select files from 'Documents'")
+	return newError(KindMissingTarget, "I need \"files\", \"folders\", or \"all\" to start — for example: files from 'Documents'")
 }
 
 func UnexpectedInput(got string) *Error {
-	return newError(KindUnexpectedInput, "I don't understand \"%s\" here. Try: select files from 'Documents'", got)
+	return newError(KindUnexpectedInput, "I don't understand \"%s\" here. Try: files from 'Documents'", got)
 }
 
 func IncompleteAfter(keyword string) *Error {
-	return newError(KindIncompleteQuery, "The query ends after \"%s\". I need more — for example: select files from 'Documents' where name = 'notes.txt'", keyword)
+	return newError(KindIncompleteQuery, "The query ends after \"%s\". I need more — for example: files from 'Documents' where name = 'notes.txt'", keyword)
+}
+
+func NoVerbNeeded(got string) *Error {
+	return newError(KindNoVerbNeeded, "Queries don't need \"%s\" — start with what you want: files from 'Documents'", got)
 }
 
 func SingularTarget(got string) *Error {
-	return newError(KindSingularTarget, "Use \"%ss\", not \"%s\" — for example: select %ss from 'Documents'", got, got, got)
+	return newError(KindSingularTarget, "Use \"%ss\", not \"%s\" — for example: %ss from 'Documents'", got, got, got)
 }
 
-func UnknownTarget(got string) *Error {
-	return newError(KindUnknownTarget, "I can select \"files\", \"folders\", or \"all\" — not \"%s\".", got)
+func UnknownTarget(got string, known []string) *Error {
+	if suggestion, ok := Suggest(got, known); ok {
+		return newError(KindUnknownTarget, "I can list \"files\", \"folders\", or \"all\" — not \"%s\". Did you mean \"%s\"?", got, suggestion)
+	}
+	return newError(KindUnknownTarget, "I can list \"files\", \"folders\", or \"all\" — not \"%s\".", got)
 }
 
 func MissingFrom() *Error {
-	return newError(KindMissingFrom, "I need \"from\" before the folder — for example: select files from 'Documents'")
+	return newError(KindMissingFrom, "I need \"from\" before the folder — for example: files from 'Documents'")
 }
 
 func MissingPath() *Error {
-	return newError(KindMissingPath, "I need a folder after \"from\" — for example: select files from 'Documents'")
+	return newError(KindMissingPath, "I need a folder after \"from\" — for example: files from 'Documents'")
 }
 
 func UnknownField(got string, known []string) *Error {
@@ -136,11 +145,11 @@ func WrongOperator(field string, allowed []string) *Error {
 	if field == "name_like" {
 		return newError(KindWrongOperator, "%s", base)
 	}
-	return newError(KindWrongOperator, "%s For patterns use name_like: select files from 'Documents' where name_like = '%%report%%'", base)
+	return newError(KindWrongOperator, "%s For patterns use name_like: files from 'Documents' where name_like = '%%report%%'", base)
 }
 
 func CountChildOnFiles() *Error {
-	return newError(KindCountChildOnFiles, "count(child) describes folders, not files. Try: select folders from 'Documents' where count(child) > 10")
+	return newError(KindCountChildOnFiles, "count(child) describes folders, not files. Try: folders from 'Documents' where count(child) > 10")
 }
 
 func CountChildNonNumeric() *Error {
