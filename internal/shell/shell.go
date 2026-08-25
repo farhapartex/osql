@@ -38,7 +38,7 @@ func New(cfg Config) *Shell {
 		cfg.Err = os.Stderr
 	}
 	if cfg.Renderer == nil {
-		cfg.Renderer = output.NewLines()
+		cfg.Renderer = output.NewTable()
 	}
 	return &Shell{cfg: cfg, builtins: DefaultBuiltins()}
 }
