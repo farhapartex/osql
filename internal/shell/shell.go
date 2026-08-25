@@ -1,6 +1,7 @@
 package shell
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -8,7 +9,9 @@ import (
 	"strings"
 
 	"github.com/farhapartex/osql/internal/buildinfo"
+	"github.com/farhapartex/osql/internal/engine"
 	"github.com/farhapartex/osql/internal/oerr"
+	"github.com/farhapartex/osql/internal/output"
 )
 
 const (
@@ -17,8 +20,9 @@ const (
 )
 
 var (
-	ErrNoReader = errors.New("no line reader configured")
-	errNoStore  = errors.New("no state store configured")
+	ErrNoReader   = errors.New("no line reader configured")
+	errNoStore    = errors.New("no state store configured")
+	errNoPipeline = errors.New("no query pipeline configured")
 )
 
 type Shell struct {
@@ -32,6 +36,9 @@ func New(cfg Config) *Shell {
 	}
 	if cfg.Err == nil {
 		cfg.Err = os.Stderr
+	}
+	if cfg.Renderer == nil {
+		cfg.Renderer = output.NewLines()
 	}
 	return &Shell{cfg: cfg, builtins: DefaultBuiltins()}
 }
@@ -81,6 +88,43 @@ func (s *Shell) Run() error {
 	}
 }
 
+func (s *Shell) runQuery(line string) error {
+	if s.cfg.Lexer == nil || s.cfg.Parser == nil || s.cfg.Engine == nil {
+		return errNoPipeline
+	}
+
+	tokens, err := s.cfg.Lexer.Lex(line)
+	if err != nil {
+		return err
+	}
+
+	stmt, err := s.cfg.Parser.Parse(tokens)
+	if err != nil {
+		return err
+	}
+
+	executor, ok := s.cfg.Engine.Lookup(stmt.Verb)
+	if !ok {
+		return oerr.UnknownVerb(stmt.Verb, s.KnownVerbs())
+	}
+
+	sink := &engine.SliceSink{}
+	if err := executor.Execute(context.Background(), stmt, sink); err != nil {
+		return err
+	}
+
+	if len(sink.Rows) == 0 {
+		if len(stmt.Predicates) == 0 {
+			fmt.Fprintln(s.cfg.Out, oerr.EmptyFolder(stmt.Path))
+		} else {
+			fmt.Fprintln(s.cfg.Out, oerr.NoMatches())
+		}
+		return nil
+	}
+
+	return s.cfg.Renderer.Render(s.cfg.Out, sink.Rows)
+}
+
 func (s *Shell) Dispatch(line string) error {
 	line = strings.TrimSuffix(strings.TrimSpace(line), ";")
 
@@ -95,8 +139,7 @@ func (s *Shell) Dispatch(line string) error {
 		return b.Run(s, fields[1:])
 	}
 	if name == QueryVerb {
-		fmt.Fprintln(s.cfg.Out, line)
-		return nil
+		return s.runQuery(line)
 	}
 
 	return oerr.UnknownVerb(fields[0], s.KnownVerbs())
