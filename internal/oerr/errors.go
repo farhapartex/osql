@@ -12,6 +12,7 @@ const (
 	KindFolderMissing Kind = iota
 	KindPathIsFile
 	KindNoPermission
+	KindOutsideRoot
 	KindUnknownVerb
 	KindMissingTarget
 	KindSingularTarget
@@ -31,6 +32,7 @@ var kindNames = map[Kind]string{
 	KindFolderMissing:        "folder_missing",
 	KindPathIsFile:           "path_is_file",
 	KindNoPermission:         "no_permission",
+	KindOutsideRoot:          "outside_root",
 	KindUnknownVerb:          "unknown_verb",
 	KindMissingTarget:        "missing_target",
 	KindSingularTarget:       "singular_target",
@@ -84,6 +86,10 @@ func PathIsFile(path string) *Error {
 
 func NoPermission(path string) *Error {
 	return newError(KindNoPermission, "I don't have permission to read '%s'.", path)
+}
+
+func OutsideRoot(input, root string) *Error {
+	return newError(KindOutsideRoot, "I can only look inside '%s'. '%s' points outside it.", root, input)
 }
 
 func UnknownVerb(got string, known []string) *Error {
