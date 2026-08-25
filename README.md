@@ -55,6 +55,7 @@ osql
 | Target | Does |
 |---|---|
 | `make test` | `go test ./... -race` |
+| `make e2e` | drives the built binary against a real fixture and reports pass/fail |
 | `make bench` | benchmarks with allocation counts |
 | `make vet` | `go vet ./...` |
 | `make fmt` | `go fmt ./...` |
