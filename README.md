@@ -8,6 +8,7 @@ $ osql
 osql > files from 'Documents'
 osql > files from 'Documents' where type = 'txt'
 osql > files from '~' recursive where name_like = '%report%'
+osql > count(files) from 'Documents'
 osql > exit
 ```
 
@@ -66,6 +67,7 @@ osql
 
 ```
 <all|files|folders> from '<path>' [recursive] [where <condition>]
+count(<all|files|folders>) from '<path>' [recursive] [where <condition>]
 ```
 
 Fields are `name`, `name_like` (with `%` wildcards), `type`, and `count(child)`.
