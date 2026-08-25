@@ -55,6 +55,12 @@ setup() {
   printf 'keep' > "$FIXTURE/empty_ish/.keep"
   printf 'far' > "$FIXTURE/nested/deep/far.txt"
   printf 'app' > "$FIXTURE/app.log"
+  mkdir -p "$FIXTURE/text"
+  printf 'line one\nline two\n' > "$FIXTURE/text/readme.txt"
+  printf 'no trailing newline' > "$FIXTURE/text/bare.txt"
+  : > "$FIXTURE/text/empty.txt"
+  printf '\x7fELF\x00\x01\x02binary' > "$FIXTURE/text/prog.bin"
+  printf '\xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e\n' > "$FIXTURE/text/unicode.txt"
   printf 'err' > "$FIXTURE/error.log"
 
   head -c 1023 /dev/zero | tr '\0' 'a' > "$FIXTURE/size_1023.bin"
@@ -75,7 +81,7 @@ osql_raw() {
 }
 
 osql() {
-  osql_raw "$1" | tail -n +2 | sed 's/^osql > //'
+  osql_raw "$1" | tail -n +2 | sed 's/osql > //g'
 }
 
 expect_contains() {
@@ -204,7 +210,7 @@ main() {
 ' 'type "help" for commands'
   expect_shell_contains "help lists builtins" 'help
 exit
-' "clear" "exit" "history" "files" "count("
+' "clear" "exit" "history" "files" "count(" "open"
   expect_shell_contains "blank lines are ignored" '
 
 files from '"'"'docs'"'"'
@@ -286,6 +292,29 @@ exit
   expect_contains "kilobytes at the boundary" "files from '.' where name = 'size_1024.bin'" "1.0 KB"
   expect_contains "1048575 promotes to megabytes" "files from '.' where name = 'size_1048575.bin'" "1.0 MB"
   expect_absent "never shows 1024 of a unit" "files from '.' where name = 'size_1048575.bin'" "1024.0 KB"
+
+  section "open"
+  expect_line "prints the first line" "open 'text/readme.txt'" "line one"
+  expect_line "prints the second line" "open 'text/readme.txt'" "line two"
+  expect_contains "reads a nested path" "open '/text/readme.txt'" "line one"
+  expect_contains "tilde form works" "open '~/text/readme.txt'" "line one"
+  expect_contains "bare word path works" "open text/readme.txt" "line one"
+  expect_line "adds a missing final newline" "open 'text/bare.txt'" "no trailing newline"
+  expect_line "keeps unicode intact" "open 'text/unicode.txt'" "日本語"
+  expect_line "refuses a folder" "open 'text'" "'text' is a folder, not a file. Try: open 'text/notes.txt'"
+  expect_line "refuses the root" "open '.'" "'.' is a folder, not a file. Try: open './notes.txt'"
+  expect_line "missing file" "open 'nope.txt'" "I couldn't find a file at 'nope.txt'. Check the path and try again."
+  expect_line "refuses binary" "open 'text/prog.bin'" "'text/prog.bin' looks like a binary file, so I won't print it. open only shows text."
+  expect_absent "prints nothing for binary" "open 'text/prog.bin'" "ELF"
+  expect_line "needs a path" "open" 'I need a file after "open" — for example: open '"'"'notes.txt'"'"''
+  expect_contains "rejects trailing words" "open 'text/readme.txt' junk" 'I don'"'"'t understand "junk" here.'
+  expect_line "cannot escape the root" "open '../../etc/hosts'" "I can only look inside '$HOME'. '../../etc/hosts' points outside it."
+  empty_out="$(osql "open 'text/empty.txt'")"
+  if [ -z "$(printf '%s' "$empty_out" | tr -d '[:space:]')" ]; then
+    pass "empty file prints nothing"
+  else
+    fail "empty file prints nothing" "expected no output" "$empty_out"
+  fi
 
   section "outcomes"
   expect_line "no matches" "files from 'docs' where type = 'zzz'" "No files matched."
