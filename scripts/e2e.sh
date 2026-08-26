@@ -612,6 +612,27 @@ exit
     'I can list "files", "folders", "all", or "apps" — not "app". Did you mean "apps"?'
   expect_contains "unmatched apps filter says so" "apps where name_like = '%zzzznope%'" "No apps matched."
 
+  expect_absent "apps shows no size column by default" "apps" "SIZE"
+  sized_out="$(osql "apps with size")"
+  if printf '%s' "$sized_out" | grep -qE '^NAME +VERSION +SOURCE +SIZE +MODIFIED$'; then
+    pass "apps with size adds a size column"
+    printf '%s' "$sized_out" | grep -qE '^[0-9]+ apps?, .* on disk$' \
+      && pass "apps with size totals the disk usage" \
+      || fail "apps with size totals the disk usage" "no total in footer" "$sized_out"
+  elif printf '%s' "$sized_out" | grep -qF "I didn't find any installed apps."; then
+    pass "apps with size adds a size column (skipped: no apps on this host)"
+    pass "apps with size totals the disk usage (skipped: no apps on this host)"
+  else
+    fail "apps with size adds a size column" "no size column" "$sized_out"
+    fail "apps with size totals the disk usage" "no output" "$sized_out"
+  fi
+
+  expect_line "with needs size" "apps with" '"with" needs "size" — for example: apps with size'
+  expect_line "with rejects other words" "apps with skipped" 'After "apps with" I only know "size", not "skipped".'
+  expect_line "with size goes before where" "apps where source = 'macos' with size" \
+    '"with size" goes before "where" — for example: apps with size where source = '"'"'homebrew'"'"''
+  expect_contains "count(apps) refuses with size" "count(apps) with size" "A count has no size column"
+
   section "summary"
   printf '  %s%d passed%s' "$GREEN" "$PASS" "$OFF"
   if [ "$FAIL" -gt 0 ]; then

@@ -243,6 +243,26 @@ list with things you never installed.
 
 osql could not read the folders where apps live.
 
+---
+
+**`"with" needs "size" — for example: apps with size`**
+
+`with` on its own. For apps the only thing that follows it is `size`.
+
+---
+
+**`"with size" goes before "where" — for example: apps with size where source = 'homebrew'`**
+
+Right words, wrong order. `with size` says what to show; `where` says what to
+keep, and it comes last.
+
+---
+
+**`A count has no size column, and measuring every app would take a while for a number you didn't ask for. Try: apps with size`**
+
+`count(apps) with size` has nowhere to put a size, and measuring apps is slow
+enough that osql will not do it for nothing.
+
 ## Deleting
 
 **`I won't empty '/Users/you' itself. Name a folder inside it, or add a where clause.`**

@@ -69,6 +69,49 @@ Ask for them when you want them:
 apps where source = 'homebrew-cli'
 ```
 
+## How much disk each app uses
+
+Add `with size`.
+
+```bash
+apps with size
+```
+
+```
+NAME           VERSION         SOURCE    SIZE      MODIFIED
+Among Us       —               system    958.8 MB  2024-12-23 21:54
+App Store      3.0             macos     15.5 MB   2023-07-11 14:56
+Google Chrome  151.0.7922.174  system    2.0 GB    2024-05-10 22:45
+
+81 apps, 29.2 GB on disk
+```
+
+It is a separate word because it is the slow part. An app is a folder with
+thousands of files inside, so measuring them all means reading every one —
+on a normal machine that is a second or two, against a few hundredths for a
+plain `apps`. You only pay it when you ask.
+
+**Filter first and it stays quick.** osql measures what is left after the
+`where` clause, not everything:
+
+```bash
+apps with size where name_like = '%Chrome%'
+```
+
+That measures one app, so it returns straight away.
+
+`with size` goes before `where`:
+
+```bash
+apps with size where source = 'homebrew'
+```
+
+A size of `—` means osql could not read inside that app. It is left out of the
+total rather than counted as zero.
+
+Sizes add up the real files inside the app. Shortcuts pointing outside the app
+are not followed, so nothing is counted twice.
+
 ## Filtering
 
 `apps` takes the same `where` clause as everything else.
@@ -109,6 +152,9 @@ count(apps)
 WHAT  COUNT
 apps  81
 ```
+
+A count has no size column, so `count(apps) with size` is refused rather than
+spending a second measuring apps for a number you did not ask for.
 
 ## Why a version is sometimes missing
 
