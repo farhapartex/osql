@@ -21,16 +21,22 @@ const (
 )
 
 type App struct {
-	Name     string
-	Version  string
-	Source   string
-	ID       string
-	Path     string
-	Modified time.Time
+	Name      string
+	Version   string
+	Source    string
+	ID        string
+	Path      string
+	Modified  time.Time
+	Size      int64
+	SizeKnown bool
 }
 
 type Catalog interface {
 	Apps(ctx context.Context) ([]App, error)
+}
+
+type AppSizer interface {
+	Sizes(ctx context.Context, apps []App) error
 }
 
 func SortApps(apps []App) {
@@ -72,8 +78,10 @@ func FilterApps(ctx context.Context, catalog Catalog, matchers []Matcher) ([]App
 }
 
 type AppReport struct {
-	Apps  []App
-	Tools int
+	Apps      []App
+	Tools     int
+	Sized     bool
+	TotalSize int64
 }
 
 type AppLister interface {
@@ -83,10 +91,11 @@ type AppLister interface {
 type AppsExecutor struct {
 	catalog  Catalog
 	compiler *Compiler
+	sizer    AppSizer
 }
 
-func NewAppsExecutor(catalog Catalog, compiler *Compiler) *AppsExecutor {
-	return &AppsExecutor{catalog: catalog, compiler: compiler}
+func NewAppsExecutor(catalog Catalog, compiler *Compiler, sizer AppSizer) *AppsExecutor {
+	return &AppsExecutor{catalog: catalog, compiler: compiler, sizer: sizer}
 }
 
 func (e *AppsExecutor) Verb() string {
@@ -105,7 +114,7 @@ func (e *AppsExecutor) ListApps(ctx context.Context, stmt *query.Statement) (App
 	}
 
 	if mentionsSource(stmt.Predicates) {
-		return AppReport{Apps: found}, nil
+		return e.withSizes(ctx, stmt, AppReport{Apps: found})
 	}
 
 	kept := make([]App, 0, len(found))
@@ -117,7 +126,28 @@ func (e *AppsExecutor) ListApps(ctx context.Context, stmt *query.Statement) (App
 		}
 		kept = append(kept, app)
 	}
-	return AppReport{Apps: kept, Tools: tools}, nil
+	return e.withSizes(ctx, stmt, AppReport{Apps: kept, Tools: tools})
+}
+
+func (e *AppsExecutor) withSizes(ctx context.Context, stmt *query.Statement, report AppReport) (AppReport, error) {
+	if !stmt.WithSize || len(report.Apps) == 0 {
+		return report, nil
+	}
+	if e.sizer == nil {
+		return report, errNoSizer
+	}
+
+	if err := e.sizer.Sizes(ctx, report.Apps); err != nil {
+		return AppReport{}, err
+	}
+
+	report.Sized = true
+	for _, app := range report.Apps {
+		if app.SizeKnown {
+			report.TotalSize += app.Size
+		}
+	}
+	return report, nil
 }
 
 func (e *AppsExecutor) Execute(ctx context.Context, stmt *query.Statement, out RowSink) error {

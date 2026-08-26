@@ -16,6 +16,8 @@ var errNoCatalog = errors.New("no app catalog configured")
 
 var errNotAnApp = errors.New("field applies only to apps")
 
+var errNoSizer = errors.New("no app sizer configured")
+
 type GlobField interface {
 	Glob() bool
 }
