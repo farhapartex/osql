@@ -88,14 +88,16 @@ func run(args []string) error {
 	counter := engine.NewCountExecutor(fsys, resolver, compiler, skip)
 	opener := engine.NewOpenExecutor(fsys, resolver)
 	maker := engine.NewNewExecutor(fsys, resolver)
+	summarizer := engine.NewSummaryExecutor(fsys, resolver, skip)
 
 	app := shell.New(shell.Config{
 		Reader:        reader.NewBasic(os.Stdin, os.Stdout, history),
 		Lexer:         query.NewLexer(),
 		Parser:        query.NewParser(compiler),
-		Engine:        engine.NewRegistry(selector, counter, opener, maker),
+		Engine:        engine.NewRegistry(selector, counter, opener, maker, summarizer),
 		Renderer:      output.NewTable(),
 		CountRenderer: output.NewCount(),
+		Summary:       output.NewSummary(),
 		Store:         store,
 		Out:           os.Stdout,
 		Err:           os.Stderr,

@@ -105,6 +105,7 @@ func builtinHelp(s *Shell, args []string) error {
 	fmt.Fprintln(w, "count(files|folders|all) from '<path>'\tcount what is in a folder")
 	fmt.Fprintln(w, "open '<path>'\tprint what is inside a text file")
 	fmt.Fprintln(w, "new file|folder '<path>' [data='...']\tmake a new file or folder")
+	fmt.Fprintln(w, "summary from '<path>' [recursive]\twhat is in a folder, at a glance")
 	for _, b := range s.builtins.All() {
 		fmt.Fprintf(w, "%s\t%s\n", b.Name, b.Summary)
 	}

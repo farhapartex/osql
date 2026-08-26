@@ -65,12 +65,13 @@ func ParseNewKind(s string) (NewKind, bool) {
 }
 
 type Statement struct {
-	Verb       string
-	Target     Target
-	Path       string
-	Recursive  bool
-	Predicates []Predicate
-	Kind       NewKind
-	Data       string
-	HasData    bool
+	Verb           string
+	Target         Target
+	Path           string
+	Recursive      bool
+	Predicates     []Predicate
+	Kind           NewKind
+	Data           string
+	HasData        bool
+	IncludeSkipped bool
 }

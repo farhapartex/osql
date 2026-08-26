@@ -52,6 +52,16 @@ setup() {
   printf 'only' > "$FIXTURE/src/one/only.txt"
   for i in $(seq 1 11); do printf 'x' > "$FIXTURE/src/big/f$i.txt"; done
 
+  mkdir -p "$FIXTURE/truly_empty"
+  mkdir -p "$FIXTURE/proj/node_modules/pkg" "$FIXTURE/proj/.venv/lib" "$FIXTURE/onlydirs/a" "$FIXTURE/onlydirs/b"
+  printf 'code' > "$FIXTURE/proj/main.go"
+  mkdir -p "$FIXTURE/wide"
+  printf 'x' > "$FIXTURE/wide/a-very-long-filename-that-should-be-truncated-in-the-summary-table.txt"
+  printf 'yy' > "$FIXTURE/wide/short.txt"
+  printf 'zzz' > "$FIXTURE/wide/日本語のファイル名前です.md"
+  printf 'readme' > "$FIXTURE/proj/README.md"
+  head -c 4096 /dev/zero | tr '\0' 'n' > "$FIXTURE/proj/node_modules/pkg/big.js"
+  head -c 2048 /dev/zero | tr '\0' 'v' > "$FIXTURE/proj/.venv/lib/mod.py"
   printf 'keep' > "$FIXTURE/empty_ish/.keep"
   printf 'far' > "$FIXTURE/nested/deep/far.txt"
   printf 'app' > "$FIXTURE/app.log"
@@ -210,7 +220,7 @@ main() {
 ' 'type "help" for commands'
   expect_shell_contains "help lists builtins" 'help
 exit
-' "clear" "exit" "history" "files" "count(" "open" "new"
+' "clear" "exit" "history" "files" "count(" "open" "new" "summary"
   expect_shell_contains "blank lines are ignored" '
 
 files from '"'"'docs'"'"'
@@ -356,6 +366,50 @@ exit
   expect_contains "escapes work in paths too" "files from 'docs' where name = 'notes.txt'" "notes.txt"
   expect_line "unknown escape is refused" "new file 'z.txt' data='a\\qb'" "I don't know the escape \"\\q\". I understand: \\n, \\t, \\r, \\\\ and \\'"
   expect_line "trailing backslash is unclosed" "files from 'abc\\" "This quote is never closed: 'abc\\ — add a closing '"
+
+  section "summary"
+  expect_contains "one level header" "summary from 'docs'" "docs — one level"
+  expect_contains "recursive header" "summary from 'docs' recursive" "docs — all levels"
+  expect_contains "counts section" "summary from 'docs'" "WHAT" "COUNT" "SIZE" "files" "folders" "total"
+  expect_contains "types section" "summary from 'docs'" "TYPE"
+  expect_contains "largest section" "summary from 'docs'" "LARGEST"
+  expect_contains "modified range" "summary from 'docs'" "MODIFIED"
+  expect_contains "long names are truncated" "summary from 'wide'" "…"
+  expect_absent "long names do not stretch the table" "summary from 'wide'" "a-very-long-filename-that-should-be-truncated-in-the-summary-table.txt"
+  expect_contains "wide characters survive" "summary from 'wide'" "日本語"
+  wide_out="$(osql "summary from 'wide'")"
+  widest=0
+  while IFS= read -r line; do
+    n=$(printf '%s' "$line" | wc -m | tr -d ' ')
+    [ "$n" -gt "$widest" ] && widest=$n
+  done <<< "$wide_out"
+  if [ "$widest" -le 72 ]; then
+    pass "summary fits a normal terminal ($widest columns)"
+  else
+    fail "summary fits a normal terminal" "widest line is $widest columns" "$wide_out"
+  fi
+  count_col_what="$(printf '%s' "$wide_out" | grep 'WHAT' | grep -bo 'COUNT' | cut -d: -f1)"
+  count_col_type="$(printf '%s' "$wide_out" | grep 'TYPE' | grep -bo 'COUNT' | cut -d: -f1)"
+  if [ "$count_col_what" = "$count_col_type" ]; then
+    pass "count column lines up across blocks"
+  else
+    fail "count column lines up across blocks" "WHAT at $count_col_what, TYPE at $count_col_type" "$wide_out"
+  fi
+  expect_contains "folders carry no size" "summary from 'src'" "folders"
+  expect_line "empty folder gets one line" "summary from 'truly_empty'" "'truly_empty' is empty."
+  expect_contains "folder with no files" "summary from 'onlydirs'" "Contains 2 folders, and no files."
+  expect_absent "no files means no largest table" "summary from 'onlydirs'" "LARGEST"
+  expect_contains "warns about skipped folders" "summary from 'proj' recursive" "Skipped 2 folders" "node_modules" ".venv" 'Add "with skipped" to include them'
+  expect_contains "warning mentions the time cost" "summary from 'proj' recursive" "take longer"
+  expect_absent "with skipped drops the warning" "summary from 'proj' recursive with skipped" "Skipped 2 folders"
+  expect_contains "with skipped counts more" "summary from 'proj' recursive with skipped" "js"
+  expect_absent "default run excludes skipped types" "summary from 'proj' recursive" "6.0 KB"
+  expect_line "with needs skipped" "summary from 'docs' with" '"with" needs "skipped" — for example: summary from '"'"'Documents'"'"' recursive with skipped'
+  expect_line "with rejects other words" "summary from 'docs' with everything" 'I only know "with skipped", not "with everything".'
+  expect_line "summary needs from" "summary 'docs'" 'I need "from" before the folder — for example: files from '"'"'Documents'"'"''
+  expect_line "summary needs a path" "summary from" 'I need a folder after "from" — for example: files from '"'"'Documents'"'"''
+  expect_line "missing folder" "summary from 'nope'" "I couldn't find a folder at 'nope'. Check the path and try again."
+  expect_line "a file is not a folder" "summary from 'app.log'" "'app.log' is a file, not a folder. Try: files from 'Documents'"
 
   section "outcomes"
   expect_line "no matches" "files from 'docs' where type = 'zzz'" "No files matched."

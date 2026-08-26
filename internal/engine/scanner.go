@@ -20,6 +20,7 @@ type ScanOptions struct {
 	Matchers []Matcher
 	Skip     SkipList
 	OmitInfo bool
+	OnSkip   func(name string)
 }
 
 type Scanner struct {
@@ -57,6 +58,9 @@ func (s *Scanner) Scan(ctx context.Context, root Resolved, opts ScanOptions, sin
 		isDir := entry.IsDir()
 
 		if isDir && opts.Skip.Skips(current, entry.Name()) {
+			if opts.OnSkip != nil {
+				opts.OnSkip(entry.Name())
+			}
 			return fs.SkipDir
 		}
 

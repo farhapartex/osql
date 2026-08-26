@@ -58,6 +58,7 @@ queries:
   open '<path>'                             print a text file
   new file '<path>' data='hello'            make a file, optionally with content
   new folder '<path>'                       make a folder
+  summary from '<path>' [recursive]         counts, sizes and types at a glance
 
 Every path is resolved inside the root, so 'Documents', '/Documents' and
 '~/Documents' all mean the same folder.`

@@ -94,8 +94,8 @@ scan your whole home folder.
 
 When going recursive, `osql` walks past folders nobody wants in results:
 
-`.git`, `node_modules`, `.Trash`, `.Spotlight-V100`, `.fseventsd`,
-`Library/Caches`, `Library/Containers`
+`.git`, `node_modules`, `venv`, `.venv`, `__pycache__`, `.Trash`,
+`.Spotlight-V100`, `.fseventsd`, `Library/Caches`, `Library/Containers`
 
 This usually removes most of the work and makes recursive searches feel fast.
 Hidden files like `.gitignore` **are** shown — only these folders are skipped.

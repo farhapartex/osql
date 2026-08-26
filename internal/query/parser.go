@@ -11,6 +11,9 @@ const (
 	VerbCount        = "count"
 	VerbOpen         = "open"
 	VerbNew          = "new"
+	VerbSummary      = "summary"
+	KeywordWith      = "with"
+	KeywordSkipped   = "skipped"
 	KeywordData      = "data"
 	LegacyVerb       = "select"
 	KeywordFrom      = "from"
@@ -90,6 +93,11 @@ func (p stdParser) Parse(tokens []Token) (*Statement, error) {
 		return parseNew(c)
 	}
 
+	if c.peek().IsKeyword(VerbSummary) {
+		c.next()
+		return parseSummary(c)
+	}
+
 	verb := VerbSelect
 	if c.peek().IsKeyword(KeywordCount) && c.peekAt(1).Kind == TokenLParen {
 		verb = VerbCount
@@ -161,6 +169,42 @@ func parseOpen(c *cursor) (*Statement, error) {
 		return nil, oerr.UnexpectedInput(c.peek().Value)
 	}
 	return &Statement{Verb: VerbOpen, Path: path}, nil
+}
+
+func parseSummary(c *cursor) (*Statement, error) {
+	if c.atEOF() {
+		return nil, oerr.MissingFrom()
+	}
+	if !c.peek().IsKeyword(KeywordFrom) {
+		return nil, oerr.MissingFrom()
+	}
+	c.next()
+
+	path, err := parsePath(c)
+	if err != nil {
+		return nil, err
+	}
+
+	stmt := &Statement{Verb: VerbSummary, Path: path, Target: TargetAll}
+
+	if c.peek().IsKeyword(KeywordRecursive) {
+		c.next()
+		stmt.Recursive = true
+	}
+
+	if c.peek().IsKeyword(KeywordWith) {
+		c.next()
+		if !c.peek().IsKeyword(KeywordSkipped) {
+			return nil, oerr.WithNeedsSkipped(c.peek().Value)
+		}
+		c.next()
+		stmt.IncludeSkipped = true
+	}
+
+	if !c.atEOF() {
+		return nil, oerr.UnexpectedInput(c.peek().Value)
+	}
+	return stmt, nil
 }
 
 func parseNew(c *cursor) (*Statement, error) {

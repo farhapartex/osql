@@ -30,6 +30,7 @@ Then try a few things:
 files from 'Documents'
 folders from 'Documents' where count(child) > 5
 count(all) from 'Documents'
+summary from 'Documents' recursive
 open 'Documents/notes.txt'
 new file 'Documents/notes.txt' data='hello'
 ```
@@ -44,6 +45,7 @@ Press `Ctrl+D` or type `exit` to leave.
 | [Queries](docs/queries.md) | Listing files and folders, and how paths work |
 | [Filtering](docs/filtering.md) | The `where` clause: names, types, and patterns |
 | [Counting](docs/counting.md) | Getting a number instead of a list |
+| [Summary](docs/summary.md) | A folder at a glance: sizes, types, biggest files |
 | [Opening files](docs/opening.md) | Printing what is inside a text file |
 | [Creating](docs/creating.md) | Making new files and folders |
 | [Output](docs/output.md) | Reading the table and the size column |

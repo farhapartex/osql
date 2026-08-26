@@ -196,6 +196,18 @@ You wrote `data=` with nothing after it.
 
 The folder will not let you write to it.
 
+## Summary
+
+**`"with" needs "skipped" — for example: summary from 'Documents' recursive with skipped`**
+
+You wrote `with` on its own. The only thing that follows it is `skipped`.
+
+---
+
+**`I only know "with skipped", not "with everything".`**
+
+Same idea — `with skipped` is the one option.
+
 ## Outcomes, not errors
 
 These two are normal answers, not problems:
