@@ -17,44 +17,94 @@ type Resolved struct {
 }
 
 type PathResolver struct {
-	fsys vfs.FileSystem
-	root string
+	fsys     vfs.FileSystem
+	dir      string
+	home     string
+	previous string
 }
 
-func NewPathResolver(fsys vfs.FileSystem, root string) *PathResolver {
-	if root == "" {
-		root = vfs.Separator
+func NewPathResolver(fsys vfs.FileSystem, dir string) *PathResolver {
+	return NewPathResolverAt(fsys, dir, dir)
+}
+
+func NewPathResolverAt(fsys vfs.FileSystem, dir, home string) *PathResolver {
+	if dir == "" {
+		dir = vfs.Separator
 	}
-	return &PathResolver{fsys: fsys, root: filepath.Clean(root)}
+	if home == "" {
+		home = dir
+	}
+	clean := filepath.Clean(dir)
+	return &PathResolver{
+		fsys:     fsys,
+		dir:      clean,
+		home:     filepath.Clean(home),
+		previous: clean,
+	}
 }
 
-func (r *PathResolver) Root() string {
-	return r.root
+func (r *PathResolver) Dir() string {
+	return r.dir
+}
+
+func (r *PathResolver) Home() string {
+	return r.home
 }
 
 func (r *PathResolver) Expand(input string) string {
 	path := strings.TrimSpace(input)
 
 	switch {
-	case path == "" || path == "." || path == "~" || path == vfs.Separator:
-		return r.root
+	case path == "":
+		return r.dir
+	case path == "~":
+		return r.home
 	case strings.HasPrefix(path, "~/"):
-		path = path[2:]
-	case strings.HasPrefix(path, vfs.Separator):
-		path = path[1:]
+		return filepath.Join(r.home, path[2:])
+	case filepath.IsAbs(path):
+		return filepath.Clean(path)
+	default:
+		return filepath.Join(r.dir, path)
+	}
+}
+
+func (r *PathResolver) Chdir(input string) (string, error) {
+	target := input
+	if strings.TrimSpace(input) == "" {
+		target = "~"
+	}
+	if strings.TrimSpace(input) == "-" {
+		target = r.previous
 	}
 
-	return filepath.Join(r.root, path)
+	resolved, err := r.Resolve(target)
+	if err != nil {
+		if oerr.Is(err, oerr.KindPathIsFile) {
+			return "", oerr.CannotChangeDir(target, "that is a file, not a folder")
+		}
+		return "", err
+	}
+
+	r.previous = r.dir
+	r.dir = resolved.Absolute
+	return r.dir, nil
+}
+
+func (r *PathResolver) Display(path string) string {
+	if path == r.home {
+		return "~"
+	}
+	if r.home != vfs.Separator && strings.HasPrefix(path, r.home+vfs.Separator) {
+		return "~" + path[len(r.home):]
+	}
+	return path
 }
 
 func (r *PathResolver) Resolve(input string) (Resolved, error) {
 	absolute := r.Expand(input)
 
-	fsPath, err := vfs.FSPathUnder(r.root, absolute)
+	fsPath, err := vfs.FSPath(absolute)
 	if err != nil {
-		if errors.Is(err, vfs.ErrOutsideRoot) {
-			return Resolved{}, oerr.OutsideRoot(input, r.root)
-		}
 		return Resolved{}, oerr.FolderMissing(input)
 	}
 
@@ -72,11 +122,8 @@ func (r *PathResolver) Resolve(input string) (Resolved, error) {
 func (r *PathResolver) ResolveFile(input string) (Resolved, error) {
 	absolute := r.Expand(input)
 
-	fsPath, err := vfs.FSPathUnder(r.root, absolute)
+	fsPath, err := vfs.FSPath(absolute)
 	if err != nil {
-		if errors.Is(err, vfs.ErrOutsideRoot) {
-			return Resolved{}, oerr.OutsideRoot(input, r.root)
-		}
 		return Resolved{}, oerr.FileMissing(input)
 	}
 
@@ -97,16 +144,12 @@ func (r *PathResolver) ResolveFile(input string) (Resolved, error) {
 func (r *PathResolver) ResolveNew(input string) (Resolved, error) {
 	absolute := r.Expand(input)
 
-	if absolute == r.root {
-		return Resolved{}, oerr.AlreadyExists(input)
-	}
-
-	fsPath, err := vfs.FSPathUnder(r.root, absolute)
+	fsPath, err := vfs.FSPath(absolute)
 	if err != nil {
-		if errors.Is(err, vfs.ErrOutsideRoot) {
-			return Resolved{}, oerr.OutsideRoot(input, r.root)
-		}
 		return Resolved{}, oerr.CannotCreate(input, "that path is not usable")
+	}
+	if absolute == vfs.Separator {
+		return Resolved{}, oerr.AlreadyExists(input)
 	}
 
 	return Resolved{Input: input, Absolute: absolute, FSPath: fsPath}, nil

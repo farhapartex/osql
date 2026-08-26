@@ -92,8 +92,8 @@ func (e *DeleteExecutor) planSingle(stmt *query.Statement) (DeletePlan, error) {
 		if stmt.Kind == query.NewFile {
 			return DeletePlan{}, oerr.DeleteKindMismatch(stmt.Path, "folder")
 		}
-		if resolved.FSPath == vfs.RootPath {
-			return DeletePlan{}, oerr.RefuseDeleteRoot(e.resolver.Root())
+		if err := e.refuseProtected(resolved.Absolute); err != nil {
+			return DeletePlan{}, err
 		}
 		return e.planFor(stmt, []Victim{e.weigh(resolved.FSPath, path.Base(resolved.FSPath), true)}), nil
 	}
@@ -115,13 +115,27 @@ func (e *DeleteExecutor) planSingle(stmt *query.Statement) (DeletePlan, error) {
 	return DeletePlan{}, err
 }
 
+func isTopLevel(absolute, home string) bool {
+	return absolute == vfs.Separator || absolute == home
+}
+
+func (e *DeleteExecutor) refuseProtected(absolute string) error {
+	if isTopLevel(absolute, e.resolver.Home()) {
+		return oerr.RefuseDeleteRoot(e.resolver.Display(absolute))
+	}
+	if absolute == e.resolver.Dir() {
+		return oerr.RefuseDeleteHere(e.resolver.Display(absolute))
+	}
+	return nil
+}
+
 func (e *DeleteExecutor) planBulk(ctx context.Context, stmt *query.Statement) (DeletePlan, error) {
 	resolved, err := e.resolver.Resolve(stmt.Path)
 	if err != nil {
 		return DeletePlan{}, err
 	}
-	if resolved.FSPath == vfs.RootPath && len(stmt.Predicates) == 0 {
-		return DeletePlan{}, oerr.RefuseDeleteRoot(e.resolver.Root())
+	if len(stmt.Predicates) == 0 && isTopLevel(resolved.Absolute, e.resolver.Home()) {
+		return DeletePlan{}, oerr.RefuseDeleteRoot(e.resolver.Display(resolved.Absolute))
 	}
 
 	matchers, err := e.compiler.CompileAll(stmt.Predicates, stmt.Target)
@@ -232,7 +246,7 @@ func (e *DeleteExecutor) remove(victim Victim, permanent bool) error {
 		return errNoTrash
 	}
 
-	absolute := vfs.OSPath(e.resolver.Root(), victim.FSPath)
+	absolute := vfs.OSPath(vfs.Separator, victim.FSPath)
 	if _, err := e.trash.Move(absolute); err != nil {
 		if errors.Is(err, vfs.ErrCrossDevice) {
 			return errCrossDevice
