@@ -100,6 +100,9 @@ When going recursive, `osql` walks past folders nobody wants in results:
 This usually removes most of the work and makes recursive searches feel fast.
 Hidden files like `.gitignore` **are** shown — only these folders are skipped.
 
+[`delete`](deleting.md) is the one command that does *not* skip them, so it can
+never tell you a folder is empty while files remain inside.
+
 ## Small conveniences
 
 Keywords ignore capitals:
