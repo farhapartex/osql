@@ -17,6 +17,7 @@ type Config struct {
 	Engine        *engine.Registry
 	Renderer      output.Renderer
 	CountRenderer output.Renderer
+	Apps          output.AppsRenderer
 	Summary       output.SummaryRenderer
 	Delete        output.DeleteRenderer
 	Store         state.Store

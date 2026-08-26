@@ -108,7 +108,12 @@ func (s *Shell) runQuery(line string) error {
 		return err
 	}
 
-	executor, ok := s.cfg.Engine.Lookup(stmt.Verb)
+	verb := stmt.Verb
+	if stmt.Target == query.TargetApps {
+		verb = query.VerbApps
+	}
+
+	executor, ok := s.cfg.Engine.Lookup(verb)
 	if !ok {
 		return oerr.UnknownVerb(stmt.Verb, s.KnownWords())
 	}
@@ -117,6 +122,22 @@ func (s *Shell) runQuery(line string) error {
 
 	if deleter, ok := executor.(engine.Deleter); ok {
 		return s.runDelete(ctx, deleter, stmt)
+	}
+
+	if lister, ok := executor.(engine.AppLister); ok && stmt.Verb != query.VerbCount {
+		report, err := lister.ListApps(ctx, stmt)
+		if err != nil {
+			return err
+		}
+		if len(report.Apps) == 0 {
+			if len(stmt.Predicates) == 0 {
+				fmt.Fprintln(s.cfg.Out, oerr.NoApps())
+			} else {
+				fmt.Fprintln(s.cfg.Out, oerr.NoAppsMatched())
+			}
+			return nil
+		}
+		return s.cfg.Apps.Render(s.cfg.Out, report)
 	}
 
 	if summarizer, ok := executor.(engine.Summarizer); ok {
