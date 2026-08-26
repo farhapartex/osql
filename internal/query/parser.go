@@ -13,6 +13,7 @@ const (
 	VerbNew          = "new"
 	VerbSummary      = "summary"
 	VerbDelete       = "delete"
+	VerbApps         = "apps"
 	KeywordPermanent = "permanently"
 	KeywordWith      = "with"
 	KeywordSkipped   = "skipped"
@@ -28,7 +29,7 @@ const (
 
 var singularTargets = []string{"file", "folder"}
 
-var targetNamesInOrder = []string{"all", "files", "folders"}
+var targetNamesInOrder = []string{"all", "files", "folders", "apps"}
 
 var structuralKeywords = []string{KeywordFrom, KeywordRecursive, KeywordWhere, KeywordAnd}
 
@@ -105,6 +106,11 @@ func (p stdParser) Parse(tokens []Token) (*Statement, error) {
 		return parseDelete(c)
 	}
 
+	if c.peek().IsKeyword(VerbApps) {
+		c.next()
+		return parseAppsTail(c, VerbApps)
+	}
+
 	verb := VerbSelect
 	if c.peek().IsKeyword(KeywordCount) && c.peekAt(1).Kind == TokenLParen {
 		verb = VerbCount
@@ -122,6 +128,10 @@ func (p stdParser) Parse(tokens []Token) (*Statement, error) {
 			return nil, oerr.UnclosedCount()
 		}
 		c.next()
+	}
+
+	if target == TargetApps {
+		return parseAppsTail(c, verb)
 	}
 
 	if c.atEOF() {
@@ -167,6 +177,31 @@ func (p stdParser) Parse(tokens []Token) (*Statement, error) {
 	return stmt, nil
 }
 
+func parseAppsTail(c *cursor, verb string) (*Statement, error) {
+	if c.peek().IsKeyword(KeywordFrom) {
+		return nil, oerr.AppsNeedNoPath()
+	}
+	if c.peek().IsKeyword(KeywordRecursive) {
+		return nil, oerr.AppsNotRecursive()
+	}
+
+	stmt := &Statement{Verb: verb, Target: TargetApps}
+
+	if c.peek().IsKeyword(KeywordWhere) {
+		c.next()
+		predicates, err := parseCondition(c)
+		if err != nil {
+			return nil, err
+		}
+		stmt.Predicates = predicates
+	}
+
+	if !c.atEOF() {
+		return nil, oerr.UnexpectedInput(c.peek().Value)
+	}
+	return stmt, nil
+}
+
 func parseOpen(c *cursor) (*Statement, error) {
 	path, err := parsePath(c)
 	if err != nil {
@@ -187,6 +222,10 @@ func parseDelete(c *cursor) (*Statement, error) {
 	if kind, ok := ParseNewKind(strings.ToLower(word.Value)); ok {
 		c.next()
 		return parseDeleteSingle(c, kind)
+	}
+
+	if word.IsKeyword(VerbApps) {
+		return nil, oerr.CannotDeleteApps()
 	}
 
 	target, ok := ParseTarget(strings.ToLower(word.Value))
