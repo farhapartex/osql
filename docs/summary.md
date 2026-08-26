@@ -12,21 +12,22 @@ summary from 'Downloads'
 ```
 Downloads — one level
 
-     WHAT  COUNT      SIZE
-    files     52    1.4 GB
-  folders      8         —
-    total     60    1.4 GB
+  WHAT       COUNT       SIZE
+  files         52     1.4 GB
+  folders        8          —
+  total         60     1.4 GB
 
-  TYPE  COUNT      SIZE
-   pdf     18  890.2 MB
-   zip      6  412.1 MB
-   txt     21    1.2 MB
+  TYPE       COUNT       SIZE
+  pdf           18   890.2 MB
+  zip            6   412.1 MB
+  txt           21     1.2 MB
+  and 10 more types
 
-LARGEST         SIZE
-report.pdf   412.0 MB
-archive.zip  288.4 MB
+  LARGEST                                              SIZE
+  report.pdf                                       412.0 MB
+  Designing Data Intensiv…y Martin Kleppmann.pdf    23.8 MB
 
-MODIFIED  2024-03-11 to 2026-08-25
+  MODIFIED  2024-03-11 to 2026-08-25
 ```
 
 ## One level or all levels
@@ -51,7 +52,9 @@ column is the same on the `files` and `total` rows.
 under `—`. Only the top 5 are shown; if there are more you will see a line like
 `and 12 more types`.
 
-**LARGEST** — the biggest files, largest first. Top 5 again.
+**LARGEST** — the biggest files, largest first. Top 5 again. Long names are
+shortened in the middle with a `…`, keeping the start and the extension, so one
+long filename cannot push the SIZE column off the side of your screen.
 
 **MODIFIED** — the oldest and newest change dates in the folder.
 
@@ -100,7 +103,7 @@ summary from 'src'
 ```
 src — one level
 
-Contains 3 folders, and no files.
+  Contains 3 folders, and no files.
 ```
 
 ## Why it can be slow
