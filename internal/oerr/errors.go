@@ -57,6 +57,7 @@ const (
 	KindWithNeedsSize
 	KindWithSizeComesFirst
 	KindCountHasNoSize
+	KindSummaryTakesNoWhere
 )
 
 var kindNames = map[Kind]string{
@@ -108,6 +109,7 @@ var kindNames = map[Kind]string{
 	KindWithNeedsSize:        "with_needs_size",
 	KindWithSizeComesFirst:   "with_size_comes_first",
 	KindCountHasNoSize:       "count_has_no_size",
+	KindSummaryTakesNoWhere:  "summary_takes_no_where",
 }
 
 func (k Kind) String() string {
@@ -353,6 +355,10 @@ func CountHasNoSize() *Error {
 
 func WithSizeComesFirst() *Error {
 	return newError(KindWithSizeComesFirst, "\"with size\" goes before \"where\" — for example: apps with size where source = 'homebrew'")
+}
+
+func SummaryTakesNoWhere() *Error {
+	return newError(KindSummaryTakesNoWhere, "A summary covers everything, so it takes no \"where\". Use \"apps where …\" to filter a list instead.")
 }
 
 func AppsNeedNoPath() *Error {
