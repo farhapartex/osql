@@ -86,6 +86,42 @@ teardown() {
   rm -rf "$WORK"
 }
 
+osql_script() {
+  printf '%s' "$1" | (cd "$FIXTURE" && "$BIN") 2>&1 | tail -n +2 | sed 's/osql > //g; s/delete> //g'
+}
+
+expect_script_contains() {
+  local name="$1" script="$2"; shift 2
+  local out; out="$(osql_script "$script")"
+  local missing=()
+  for want in "$@"; do
+    printf '%s' "$out" | grep -qF -- "$want" || missing+=("$want")
+  done
+  if [ ${#missing[@]} -eq 0 ]; then
+    pass "$name"
+  else
+    fail "$name" "missing: ${missing[*]}" "$out"
+  fi
+}
+
+file_gone() {
+  local name="$1" path="$2"
+  if [ -e "$FIXTURE/$path" ]; then
+    fail "$name" "$path is still there"
+  else
+    pass "$name"
+  fi
+}
+
+file_kept() {
+  local name="$1" path="$2"
+  if [ -e "$FIXTURE/$path" ]; then
+    pass "$name"
+  else
+    fail "$name" "$path was deleted"
+  fi
+}
+
 osql_raw() {
   printf '%s\nexit\n' "$1" | (cd "$FIXTURE" && "$BIN") 2>&1
 }
@@ -220,7 +256,7 @@ main() {
 ' 'type "help" for commands'
   expect_shell_contains "help lists builtins" 'help
 exit
-' "clear" "exit" "history" "files" "count(" "open" "new" "summary"
+' "clear" "exit" "history" "files" "count(" "open" "new" "summary" "delete"
   expect_shell_contains "blank lines are ignored" '
 
 files from '"'"'docs'"'"'
@@ -410,6 +446,81 @@ exit
   expect_line "summary needs a path" "summary from" 'I need a folder after "from" — for example: files from '"'"'Documents'"'"''
   expect_line "missing folder" "summary from 'nope'" "I couldn't find a folder at 'nope'. Check the path and try again."
   expect_line "a file is not a folder" "summary from 'app.log'" "'app.log' is a file, not a folder. Try: files from 'Documents'"
+
+  section "delete"
+  mkdir -p "$FIXTURE/trashme" "$FIXTURE/keepme/inner"
+  printf 'a' > "$FIXTURE/trashme/one.tmp"
+  printf 'bb' > "$FIXTURE/trashme/two.tmp"
+  printf 'ccc' > "$FIXTURE/trashme/keep.txt"
+  printf 'd' > "$FIXTURE/keepme/inner/deep.txt"
+  printf 'e' > "$FIXTURE/solo.txt"
+  printf 'f' > "$FIXTURE/forever.txt"
+
+  expect_script_contains "preview lists what will go" "delete files from 'trashme' where type = 'tmp'
+no
+exit
+" "These 2 items will be deleted" "one.tmp" "two.tmp" "total" 'Type "yes" to go ahead'
+  file_kept "cancelling keeps the files" "trashme/one.tmp"
+  expect_script_contains "cancelling says so" "delete file 'solo.txt'
+no
+exit
+" "Cancelled. Nothing was deleted."
+  file_kept "a cancelled single delete keeps the file" "solo.txt"
+
+  expect_script_contains "empty answer cancels" "delete file 'solo.txt'
+
+exit
+" "Cancelled."
+  file_kept "an empty answer keeps the file" "solo.txt"
+
+  expect_script_contains "end of input cancels" "delete file 'solo.txt'
+" "Cancelled."
+  file_kept "end of input keeps the file" "solo.txt"
+
+  expect_script_contains "yes moves files to the trash" "delete files from 'trashme' where type = 'tmp'
+yes
+exit
+" "Moved 2 items to the trash"
+  file_gone "the tmp files are gone" "trashme/one.tmp"
+  file_kept "unmatched files survive" "trashme/keep.txt"
+  if [ -e "$HOME/.Trash/one.tmp" ] || [ -e "$HOME/.local/share/Trash/files/one.tmp" ]; then
+    pass "the file reached the trash"
+  else
+    fail "the file reached the trash" "not found in the trash"
+  fi
+
+  expect_script_contains "permanently says there is no way back" "delete file 'forever.txt' permanently
+no
+exit
+" "for good, with no way back"
+  expect_script_contains "permanently deletes" "delete file 'forever.txt' permanently
+yes
+exit
+" "Deleted 1 item."
+  file_gone "the permanently deleted file is gone" "forever.txt"
+  if [ -e "$HOME/.Trash/forever.txt" ]; then
+    fail "a permanent delete skips the trash" "forever.txt is in the trash"
+  else
+    pass "a permanent delete skips the trash"
+  fi
+
+  expect_script_contains "a folder shows its weight" "delete folder 'keepme'
+no
+exit
+" "'keepme' and everything in it" "1 file"
+  file_kept "the folder survives a cancel" "keepme/inner/deep.txt"
+
+  expect_contains "nothing matched" "delete files from 'trashme' where type = 'zzz'" "nothing to delete"
+  expect_line "refuses to empty the root" "delete all from '/'" "I won't empty '$HOME' itself. Name a folder inside it, or add a where clause."
+  expect_line "refuses the root by dot" "delete all from '.'" "I won't empty '$HOME' itself. Name a folder inside it, or add a where clause."
+  expect_line "wrong kind suggests the other" "delete file 'trashme'" "'trashme' is a folder, not a file. Try: delete folder 'trashme'"
+  expect_line "wrong kind the other way" "delete folder 'trashme/keep.txt'" "'trashme/keep.txt' is a file, not a folder. Try: delete file 'trashme/keep.txt'"
+  expect_line "missing file" "delete file 'nope.txt'" "I couldn't find a file at 'nope.txt'. Check the path and try again."
+  expect_line "cannot escape the root" "delete file '../escape.txt'" "I can only look inside '$HOME'. '../escape.txt' points outside it."
+  expect_line "needs a target" "delete" 'I need "file", "folder", "files", "folders" or "all" after "delete" — for example: delete file '"'"'notes.txt'"'"''
+  expect_line "unknown target" "delete thing 'x'" 'I can'"'"'t delete "thing". Try "delete file", "delete folder", or "delete files from".'
+  expect_line "needs a path" "delete file" 'I need a path after "delete file" — for example: delete file '"'"'notes.txt'"'"''
+  expect_line "bulk needs from" "delete files 'x'" 'I need "from" before the folder — for example: files from '"'"'Documents'"'"''
 
   section "outcomes"
   expect_line "no matches" "files from 'docs' where type = 'zzz'" "No files matched."
