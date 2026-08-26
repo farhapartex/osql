@@ -18,6 +18,7 @@ type Config struct {
 	Renderer      output.Renderer
 	CountRenderer output.Renderer
 	Apps          output.AppsRenderer
+	AppSummary    output.AppSummaryRenderer
 	Summary       output.SummaryRenderer
 	Delete        output.DeleteRenderer
 	Store         state.Store

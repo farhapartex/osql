@@ -58,6 +58,16 @@ long filename cannot push the SIZE column off the side of your screen.
 
 **MODIFIED** — the oldest and newest change dates in the folder.
 
+## Installed apps
+
+`summary apps` gives the same treatment to the apps on your machine — counts,
+sizes grouped by where they came from, and the biggest ones. See
+[Installed apps](apps.md).
+
+```bash
+summary apps
+```
+
 ## Folders that get skipped
 
 Folders like `node_modules`, `venv`, `.venv`, `__pycache__` and `.git` hold

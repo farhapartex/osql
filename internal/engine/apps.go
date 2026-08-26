@@ -20,6 +20,29 @@ const (
 	SourceSnap        = "snap"
 )
 
+var sourceAliases = map[string]string{
+	"hmb":      SourceHomebrew,
+	"brew":     SourceHomebrew,
+	"hmb-cli":  SourceHomebrewCLI,
+	"brew-cli": SourceHomebrewCLI,
+}
+
+func CanonicalSource(value string) string {
+	trimmed := strings.ToLower(strings.TrimSpace(value))
+	if canonical, ok := sourceAliases[trimmed]; ok {
+		return canonical
+	}
+	return trimmed
+}
+
+func SourceAliases() map[string]string {
+	out := make(map[string]string, len(sourceAliases))
+	for alias, canonical := range sourceAliases {
+		out[alias] = canonical
+	}
+	return out
+}
+
 type App struct {
 	Name      string
 	Version   string

@@ -218,6 +218,12 @@ You wrote `with` on its own. The only thing that follows it is `skipped`.
 
 Same idea — `with skipped` is the one option.
 
+---
+
+**`A summary covers everything, so it takes no "where". Use "apps where …" to filter a list instead.`**
+
+`summary apps` is always the whole picture. To narrow things down, ask for a list.
+
 ## Apps
 
 **`"apps" already looks everywhere your system installs apps, so it needs no path. Try: apps`**

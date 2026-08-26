@@ -53,6 +53,26 @@ know before you touch it.
 | `flatpak` | Installed as a Flatpak (Linux) |
 | `snap` | Installed as a Snap (Linux) |
 
+### Short names for the homebrew sources
+
+`homebrew` and `homebrew-cli` are a lot to type, so there are shorter names you
+can use instead:
+
+| Type this | Means |
+| --- | --- |
+| `hmb` | `homebrew` |
+| `brew` | `homebrew` |
+| `hmb-cli` | `homebrew-cli` |
+| `brew-cli` | `homebrew-cli` |
+
+```bash
+apps where source = 'hmb'
+apps where source = 'hmb-cli'
+```
+
+These are shortcuts for typing only. The SOURCE column still shows the full name,
+so what you read is always the same word no matter how you asked for it.
+
 ## Command-line tools are hidden by default
 
 Homebrew installs a lot of small command-line tools. On a normal machine they
@@ -111,6 +131,61 @@ total rather than counted as zero.
 
 Sizes add up the real files inside the app. Shortcuts pointing outside the app
 are not followed, so nothing is counted twice.
+
+## Everything at a glance
+
+`summary apps` answers "what is on this machine, and what is eating the disk".
+
+```bash
+summary apps
+```
+
+```
+Installed apps
+
+  WHAT           COUNT       SIZE
+  apps              81    29.2 GB
+  tools            129     4.6 GB
+  total            210    33.8 GB
+
+  SOURCE         COUNT       SIZE
+  system            33    25.3 GB
+  homebrew-cli     129     4.6 GB
+  homebrew           8     3.1 GB
+  macos             39   779.1 MB
+  user               1      805 B
+
+  LARGEST                                              SIZE
+  PyCharm                                            3.3 GB
+  iMovie                                             3.3 GB
+  Google Chrome                                      2.0 GB
+  CapCut                                             1.7 GB
+  RStudio                                            1.5 GB
+
+  MODIFIED      1979-12-31 to 2026-08-20
+```
+
+It reads the same way as [summary for a folder](summary.md): **WHAT** is the
+headline, **SOURCE** replaces that page's TYPE block, **LARGEST** is the top 5,
+and **MODIFIED** is the oldest and newest dates.
+
+Two things differ from a plain `apps` list:
+
+- **Sizes are always measured**, with no flag. Measuring is the slow part, but a
+  summary is the command you run when you want the whole picture, so it does the
+  work every time. Expect a couple of seconds.
+- **Command-line tools are counted**, not hidden. In a list they would bury the
+  real apps; in a summary they are one row, and leaving them out would make the
+  disk total wrong.
+
+`summary apps` takes no path, no `recursive`, and no `where` — it always covers
+everything. To narrow things down, list instead: `apps where …`.
+
+If an app cannot be read, it is left out of the totals and a line at the end says
+how many, so the numbers are never quietly short.
+
+A date like `1979-12-31` is real. Some apps ship with a placeholder timestamp
+inside their package, and osql shows what is on disk rather than guessing.
 
 ## Filtering
 

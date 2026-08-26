@@ -107,6 +107,7 @@ func builtinHelp(s *Shell, args []string) error {
 	fmt.Fprintln(w, "open '<path>'\tprint what is inside a text file")
 	fmt.Fprintln(w, "new file|folder '<path>' [data='...']\tmake a new file or folder")
 	fmt.Fprintln(w, "summary from '<path>' [recursive]\twhat is in a folder, at a glance")
+	fmt.Fprintln(w, "summary apps\tyour installed apps, at a glance")
 	fmt.Fprintln(w, "delete file|folder '<path>'\tmove one thing to the trash")
 	fmt.Fprintln(w, "delete files|folders|all from '<path>' [where ...]\tmove matching things to the trash")
 	for _, b := range s.builtins.All() {

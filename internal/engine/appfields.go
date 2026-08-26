@@ -1,8 +1,6 @@
 package engine
 
 import (
-	"strings"
-
 	"github.com/farhapartex/osql/internal/query"
 )
 
@@ -63,7 +61,7 @@ func (SourceField) AllowedOperators() []string { return equalityOperators }
 func (SourceField) AppliesTo(t query.Target) bool { return t == query.TargetApps }
 
 func (SourceField) NormalizeValue(v string) (Value, error) {
-	return Value{Text: strings.ToLower(strings.TrimSpace(v))}, nil
+	return Value{Text: CanonicalSource(v)}, nil
 }
 
 func (SourceField) Extract(e Entry) (Value, error) {
