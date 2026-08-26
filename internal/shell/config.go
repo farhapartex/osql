@@ -22,6 +22,7 @@ type Config struct {
 	Store         state.Store
 	Out           io.Writer
 	Err           io.Writer
+	Editing       bool
 	Version       string
 	Commit        string
 }

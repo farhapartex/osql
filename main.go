@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/farhapartex/osql/internal/buildinfo"
 	"github.com/farhapartex/osql/internal/cli"
@@ -25,6 +27,17 @@ func main() {
 		fmt.Fprintln(os.Stderr, "osql:", err)
 		os.Exit(1)
 	}
+}
+
+func restoreOnSignal(input reader.LineReader) {
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGTERM, syscall.SIGHUP)
+
+	go func() {
+		<-signals
+		input.Close()
+		os.Exit(130)
+	}()
 }
 
 func run(args []string) error {
@@ -92,8 +105,13 @@ func run(args []string) error {
 	summarizer := engine.NewSummaryExecutor(fsys, resolver, skip)
 	remover := engine.NewDeleteExecutor(fsys, resolver, compiler, vfs.NewTrash(home, nil))
 
+	input, interactive := reader.New(os.Stdin, os.Stdout, history)
+	defer input.Close()
+	restoreOnSignal(input)
+
 	app := shell.New(shell.Config{
-		Reader:        reader.NewBasic(os.Stdin, os.Stdout, history),
+		Reader:        input,
+		Editing:       interactive,
 		Lexer:         query.NewLexer(),
 		Parser:        query.NewParser(compiler),
 		Engine:        engine.NewRegistry(selector, counter, opener, maker, summarizer, remover),

@@ -52,6 +52,10 @@ func (s *Shell) Greeting() string {
 	return fmt.Sprintf("%s — type \"help\" for commands, \"exit\" to quit.", buildinfo.String(s.cfg.Version, s.cfg.Commit))
 }
 
+func (s *Shell) Editing() bool {
+	return s.cfg.Editing
+}
+
 func (s *Shell) KnownWords() []string {
 	return append(query.TargetNames(), s.builtins.Names()...)
 }
