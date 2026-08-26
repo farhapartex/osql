@@ -17,6 +17,10 @@ files from 'Documents' where type = 'txt'
 | `type` | the file extension | `=` `!=` |
 | `count(child)` | how many items are inside a folder | `=` `!=` `<` `>` `<=` `>=` |
 
+Asking for [apps](apps.md) instead of files swaps the last two for `version`,
+`version_like`, `source`, `id`, and `id_like`. osql tells you when a field does
+not fit what you asked for, and lists the ones that do.
+
 ## By name
 
 ```bash
