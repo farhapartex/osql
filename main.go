@@ -120,6 +120,7 @@ func run(args []string) error {
 		Renderer:      output.NewTable(),
 		CountRenderer: output.NewCount(),
 		Apps:          output.NewApps(),
+		AppSummary:    output.NewAppSummary(),
 		Summary:       output.NewSummary(),
 		Delete:        output.NewDelete(),
 		Store:         store,

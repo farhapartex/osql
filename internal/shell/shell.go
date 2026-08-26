@@ -124,6 +124,14 @@ func (s *Shell) runQuery(line string) error {
 		return s.runDelete(ctx, deleter, stmt)
 	}
 
+	if summarizer, ok := executor.(engine.AppSummarizer); ok && stmt.Verb == query.VerbSummary {
+		summary, err := summarizer.SummarizeApps(ctx, stmt)
+		if err != nil {
+			return err
+		}
+		return s.cfg.AppSummary.Render(s.cfg.Out, summary)
+	}
+
 	if lister, ok := executor.(engine.AppLister); ok && stmt.Verb != query.VerbCount {
 		report, err := lister.ListApps(ctx, stmt)
 		if err != nil {
