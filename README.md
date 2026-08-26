@@ -58,7 +58,7 @@ Press `Ctrl+D` or type `exit` to leave.
 ## Status
 
 Early days, and honest about it. Listing, filtering, counting, summarising,
-reading, creating, and deleting all work. The shell has no arrow-key history yet
-— see [known limits](docs/shell.md#known-limits).
+reading, creating, and deleting all work, and the prompt has arrow-key editing
+with history. See [known limits](docs/shell.md#known-limits) for what is missing.
 
 macOS and Linux only.

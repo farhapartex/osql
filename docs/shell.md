@@ -60,27 +60,54 @@ To rewrite the machine details after a version change:
 osql init --reinit
 ```
 
+## Editing the line you are typing
+
+The prompt is a real line editor. Arrow keys move the cursor, and up and down
+walk through your history.
+
+| Key | Does |
+|---|---|
+| ← → | move the cursor one character |
+| ↑ ↓ | previous / next command from your history |
+| Home / End | jump to the start or end of the line |
+| Backspace | delete the character before the cursor |
+| Delete | delete the character under the cursor |
+| Ctrl+A / Ctrl+E | start / end of line |
+| Ctrl+B / Ctrl+F | back / forward one character |
+| Alt+← / Alt+→ | move a whole word |
+| Ctrl+W | delete the word before the cursor |
+| Ctrl+K | delete from the cursor to the end |
+| Ctrl+U | delete from the start to the cursor |
+| Ctrl+L | clear the screen |
+| Ctrl+C | throw away the line you are typing, stay in the shell |
+| Ctrl+D | leave the shell (or delete forward, if the line is not empty) |
+
+Pressing ↑ then editing the recalled line works as you would expect. Pressing ↓
+back past the newest entry brings back whatever you had half-typed.
+
+### When it is not available
+
+If `osql` is not attached to a terminal — piped input, a script, a CI job — it
+falls back to reading plain lines. Everything still works, there is just no
+cursor to move:
+
+```bash
+printf "files from 'Documents'
+exit
+" | osql
+```
+
 ## Known limits
 
-**Arrow keys do not recall commands yet.** Pressing the up arrow prints `^[[A`
-instead of your last query. Your commands *are* saved, so `history` shows them —
-you just cannot scroll back through them.
+**No tab completion.** Tab does nothing yet.
 
-The reason is that proper arrow-key editing needs raw terminal control, which is
-normally handled by an outside library, and `osql` deliberately has none. It is
-on the list.
-
-**Ctrl+C leaves the shell** instead of cancelling the line you are typing. Same
-reason.
+**No paging.** `open` on a huge file prints all of it.
 
 **Nothing is overwritten.** `new` refuses rather than replace an existing file,
 and `delete` always asks before removing anything. See [deleting](deleting.md).
 
 **osql cannot ask for admin rights.** If a file needs `sudo`, osql reports that
 it could not delete it rather than prompting for a password.
-
-**No paging.** `open` on a huge file prints all of it. There is no `less`-style
-pager yet.
 
 ## Next
 
