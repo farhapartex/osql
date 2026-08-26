@@ -105,7 +105,7 @@ func run(args []string) error {
 	maker := engine.NewNewExecutor(fsys, resolver)
 	summarizer := engine.NewSummaryExecutor(fsys, resolver, skip)
 	remover := engine.NewDeleteExecutor(fsys, resolver, compiler, vfs.NewTrash(home, nil))
-	lister := engine.NewAppsExecutor(apps.NewCatalog(apps.DefaultSources(home)...), compiler)
+	lister := engine.NewAppsExecutor(apps.NewCatalog(apps.DefaultSources(home)...), compiler, apps.NewSizer())
 
 	input, interactive := reader.New(os.Stdin, os.Stdout, history)
 	defer input.Close()
