@@ -30,7 +30,6 @@ const (
 	KindMissingDeletePath
 	KindCannotRead
 	KindNoPermission
-	KindOutsideRoot
 	KindUnknownVerb
 	KindNoVerbNeeded
 	KindMissingTarget
@@ -58,6 +57,9 @@ const (
 	KindWithSizeComesFirst
 	KindCountHasNoSize
 	KindSummaryTakesNoWhere
+	KindRefuseDeleteHere
+	KindCannotChangeDir
+	KindPwdTakesNoPath
 )
 
 var kindNames = map[Kind]string{
@@ -82,7 +84,6 @@ var kindNames = map[Kind]string{
 	KindMissingDeletePath:    "missing_delete_path",
 	KindCannotRead:           "cannot_read",
 	KindNoPermission:         "no_permission",
-	KindOutsideRoot:          "outside_root",
 	KindUnknownVerb:          "unknown_verb",
 	KindNoVerbNeeded:         "no_verb_needed",
 	KindMissingTarget:        "missing_target",
@@ -110,6 +111,9 @@ var kindNames = map[Kind]string{
 	KindWithSizeComesFirst:   "with_size_comes_first",
 	KindCountHasNoSize:       "count_has_no_size",
 	KindSummaryTakesNoWhere:  "summary_takes_no_where",
+	KindRefuseDeleteHere:     "refuse_delete_here",
+	KindCannotChangeDir:      "cannot_change_dir",
+	KindPwdTakesNoPath:       "pwd_takes_no_path",
 }
 
 func (k Kind) String() string {
@@ -246,10 +250,6 @@ func NoPermission(path string) *Error {
 	return newError(KindNoPermission, "I don't have permission to read '%s'.", path)
 }
 
-func OutsideRoot(input, root string) *Error {
-	return newError(KindOutsideRoot, "I can only look inside '%s'. '%s' points outside it.", root, input)
-}
-
 func UnknownVerb(got string, known []string) *Error {
 	if suggestion, ok := Suggest(got, known); ok {
 		return newError(KindUnknownVerb, "I don't know how to \"%s\". Did you mean \"%s\"?", got, suggestion)
@@ -355,6 +355,18 @@ func CountHasNoSize() *Error {
 
 func WithSizeComesFirst() *Error {
 	return newError(KindWithSizeComesFirst, "\"with size\" goes before \"where\" — for example: apps with size where source = 'homebrew'")
+}
+
+func RefuseDeleteHere(path string) *Error {
+	return newError(KindRefuseDeleteHere, "'%s' is the folder you are in, so I won't delete it. Move somewhere else first with \"cd ..\".", path)
+}
+
+func PwdTakesNoPath(got string) *Error {
+	return newError(KindPwdTakesNoPath, "\"pwd\" just shows where you are, so it takes no folder. To move, use: cd %s", got)
+}
+
+func CannotChangeDir(path, reason string) *Error {
+	return newError(KindCannotChangeDir, "I couldn't move to '%s': %s", path, reason)
 }
 
 func SummaryTakesNoWhere() *Error {
