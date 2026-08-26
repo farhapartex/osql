@@ -12,6 +12,16 @@ import (
 
 var errNoFileSystem = errors.New("no filesystem configured")
 
+var errNoCatalog = errors.New("no app catalog configured")
+
+var errNotAnApp = errors.New("field applies only to apps")
+
+var errNoSizer = errors.New("no app sizer configured")
+
+type GlobField interface {
+	Glob() bool
+}
+
 type FieldRegistry struct {
 	byName map[string]FieldExtractor
 	order  []string
@@ -31,6 +41,11 @@ func DefaultFields(fsys vfs.FileSystem) *FieldRegistry {
 		NameLikeField{},
 		TypeField{},
 		NewCountChildField(fsys),
+		VersionField{},
+		VersionLikeField{},
+		SourceField{},
+		IDField{},
+		IDLikeField{},
 	)
 }
 
@@ -145,13 +160,26 @@ func (c *Compiler) Fields() *FieldRegistry { return c.fields }
 
 func (c *Compiler) Operators() *OperatorRegistry { return c.ops }
 
+func (c *Compiler) fieldsFor(target query.Target) []string {
+	names := make([]string, 0, len(c.fields.Names()))
+	for _, name := range c.fields.Names() {
+		if field, ok := c.fields.Lookup(name); ok && field.AppliesTo(target) {
+			names = append(names, name)
+		}
+	}
+	return names
+}
+
 func (c *Compiler) Validate(p query.Predicate, target query.Target) error {
 	field, ok := c.fields.Lookup(p.Field)
 	if !ok {
-		return oerr.UnknownField(p.Field, c.fields.Names())
+		return oerr.UnknownField(p.Field, c.fieldsFor(target))
 	}
 	if !field.AppliesTo(target) {
-		return oerr.CountChildOnFiles()
+		if p.Field == FieldCountChild && target == query.TargetFiles {
+			return oerr.CountChildOnFiles()
+		}
+		return oerr.FieldNotForTarget(p.Field, target.String(), c.fieldsFor(target))
 	}
 	if !slices.Contains(field.AllowedOperators(), p.Op) {
 		return oerr.WrongOperator(p.Field, field.AllowedOperators())
@@ -179,7 +207,7 @@ func (c *Compiler) Compile(p query.Predicate, target query.Target) (Matcher, err
 	}
 
 	m := Matcher{field: field, compare: compare, want: want}
-	if p.Field == FieldNameLike {
+	if glob, ok := field.(GlobField); ok && glob.Glob() {
 		m.isGlob = true
 		m.pattern = CompilePattern(want.Text)
 		m.negate = p.Op == OpNotEqual

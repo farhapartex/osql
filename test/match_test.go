@@ -72,7 +72,10 @@ func TestFieldRegistryNamesFollowDeclarationOrder(t *testing.T) {
 	r := engine.DefaultFields(nil)
 
 	got := r.Names()
-	want := []string{"name", "name_like", "type", "count(child)"}
+	want := []string{
+		"name", "name_like", "type", "count(child)",
+		"version", "version_like", "source", "id", "id_like",
+	}
 	if !slices.Equal(got, want) {
 		t.Errorf("Names() = %v, want %v — the order feeds the spec's unknown-field message", got, want)
 	}
@@ -182,10 +185,35 @@ func TestValidateUnknownField(t *testing.T) {
 	if !oerr.Is(err, oerr.KindUnknownField) {
 		t.Errorf("error kind = %v, want unknown_field", err)
 	}
-	for _, name := range []string{"name", "name_like", "type", "count(child)"} {
+	for _, name := range []string{"name", "name_like", "type"} {
 		if !strings.Contains(err.Error(), name) {
 			t.Errorf("error message does not list %q: %v", name, err)
 		}
+	}
+	if strings.Contains(err.Error(), "count(child)") {
+		t.Errorf("count(child) does not work on files, so it must not be offered: %v", err)
+	}
+	if strings.Contains(err.Error(), "version") {
+		t.Errorf("app-only fields must not be offered for a files query: %v", err)
+	}
+}
+
+func TestUnknownFieldListsOnlyFieldsForThatTarget(t *testing.T) {
+	c := engine.NewCompiler(engine.DefaultFields(nil), engine.DefaultOperators())
+
+	folders := c.Validate(query.Predicate{Field: "extension", Op: "=", Value: "txt"}, query.TargetFolders)
+	if !strings.Contains(folders.Error(), "count(child)") {
+		t.Errorf("count(child) works on folders, so it must be offered: %v", folders)
+	}
+
+	apps := c.Validate(query.Predicate{Field: "extension", Op: "=", Value: "txt"}, query.TargetApps)
+	for _, name := range []string{"version", "source", "id"} {
+		if !strings.Contains(apps.Error(), name) {
+			t.Errorf("apps query must offer %q: %v", name, apps)
+		}
+	}
+	if strings.Contains(apps.Error(), "count(child)") {
+		t.Errorf("count(child) must not be offered for apps: %v", apps)
 	}
 }
 

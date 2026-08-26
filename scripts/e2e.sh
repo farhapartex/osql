@@ -324,7 +324,7 @@ exit
   expect_line "count uppercase" "COUNT(FILES) FROM 'docs'" "files  5"
   expect_absent "count carries no row footer" "count(files) from 'docs'" " files" 
   expect_line "count singular is corrected" "count(file) from 'docs'" 'Use "files", not "file" — for example: files from '"'"'Documents'"'"''
-  expect_line "count unknown target" "count(bogus) from 'docs'" 'I can list "files", "folders", or "all" — not "bogus".'
+  expect_line "count unknown target" "count(bogus) from 'docs'" 'I can list "files", "folders", "all", or "apps" — not "bogus".'
   expect_line "count unclosed paren" "count(files from 'docs'" "count( needs a closing ) — for example: count(files) from 'Documents'"
   expect_line "count empty parens" "count() from 'docs'" 'I need "files", "folders", or "all" to start — for example: files from '"'"'Documents'"'"''
   expect_line "count missing path" "count(files) from" 'I need a folder after "from" — for example: files from '"'"'Documents'"'"''
@@ -529,14 +529,15 @@ exit
   section "errors"
   expect_line "folder missing" "files from 'Documnets'" "I couldn't find a folder at 'Documnets'. Check the path and try again."
   expect_line "path is a file" "files from 'app.log'" "'app.log' is a file, not a folder. Try: files from 'Documents'"
-  expect_line "unknown word suggests a target" "filez from 'docs'" 'I can list "files", "folders", or "all" — not "filez". Did you mean "files"?'
+  expect_line "unknown word suggests a target" "filez from 'docs'" 'I can list "files", "folders", "all", or "apps" — not "filez". Did you mean "files"?'
   expect_line "singular target" "file from 'docs'" 'Use "files", not "file" — for example: files from '"'"'Documents'"'"''
   expect_line "removed select verb is explained" "select files from 'docs'" 'Queries don'"'"'t need "select" — start with what you want: files from '"'"'Documents'"'"''
-  expect_line "unknown target" "documents from 'docs'" 'I can list "files", "folders", or "all" — not "documents".'
+  expect_line "unknown target" "documents from 'docs'" 'I can list "files", "folders", "all", or "apps" — not "documents".'
   expect_line "missing target" "from 'docs'" 'I need "files", "folders", or "all" to start — for example: files from '"'"'Documents'"'"''
   expect_line "missing from" "files 'docs'" 'I need "from" before the folder — for example: files from '"'"'Documents'"'"''
   expect_line "missing path" "files from" 'I need a folder after "from" — for example: files from '"'"'Documents'"'"''
-  expect_line "unknown field" "files from 'docs' where extension = 'txt'" 'I don'"'"'t know the field "extension". I understand: name, name_like, type, count(child)'
+  expect_line "unknown field" "files from 'docs' where extension = 'txt'" 'I don'"'"'t know the field "extension". I understand: name, name_like, type'
+  expect_line "unknown field lists count(child) for folders" "folders from 'docs' where extension = 'txt'" 'I don'"'"'t know the field "extension". I understand: name, name_like, type, count(child)'
   expect_contains "wrong operator for field" "files from 'docs' where name < 'b'" '"name" only works with = and !=.'
   expect_line "count(child) on files" "files from 'docs' where count(child) > 1" "count(child) describes folders, not files. Try: folders from 'Documents' where count(child) > 10"
   expect_line "count(child) needs a number" "folders from 'src' where count(child) > 'many'" "count(child) needs a number — for example: count(child) > 10"
@@ -579,6 +580,58 @@ exit
   else
     pass "--no-history writes no history file"
   fi
+
+  section "apps"
+  apps_out="$(osql "apps")"
+  if printf '%s' "$apps_out" | grep -qE '^NAME +VERSION +SOURCE +MODIFIED$'; then
+    pass "apps renders four columns"
+    printf '%s' "$apps_out" | grep -qE '^[0-9]+ apps?$' \
+      && pass "apps footer counts apps" \
+      || fail "apps footer counts apps" "no '<n> apps' footer" "$apps_out"
+  elif printf '%s' "$apps_out" | grep -qF "I didn't find any installed apps."; then
+    pass "apps renders four columns (skipped: no apps on this host)"
+    pass "apps footer counts apps (skipped: no apps on this host)"
+  else
+    fail "apps renders four columns" "neither a table nor the empty message" "$apps_out"
+    fail "apps footer counts apps" "no output to count" "$apps_out"
+  fi
+
+  expect_contains "count(apps) answers with one row" "count(apps)" "WHAT" "apps"
+  expect_absent "apps never shows a size column" "apps" "SIZE"
+
+  expect_line "apps refuses a path" "apps from '/Applications'" \
+    '"apps" already looks everywhere your system installs apps, so it needs no path. Try: apps'
+  expect_line "apps refuses recursive" "apps recursive" \
+    '"apps" is never recursive — looking inside an app would list the helpers it ships with as if they were apps. Try: apps'
+  expect_contains "delete apps is refused" "delete apps from '/'" "I won't uninstall apps"
+  expect_contains "apps rejects file-only fields" "apps where type = 'txt'" \
+    '"type" doesn'"'"'t work with "apps"'
+  expect_contains "files reject app-only fields" "files from 'docs' where version = '1'" \
+    '"version" doesn'"'"'t work with "files"'
+  expect_line "singular app suggests apps" "app" \
+    'I can list "files", "folders", "all", or "apps" — not "app". Did you mean "apps"?'
+  expect_contains "unmatched apps filter says so" "apps where name_like = '%zzzznope%'" "No apps matched."
+
+  expect_absent "apps shows no size column by default" "apps" "SIZE"
+  sized_out="$(osql "apps with size")"
+  if printf '%s' "$sized_out" | grep -qE '^NAME +VERSION +SOURCE +SIZE +MODIFIED$'; then
+    pass "apps with size adds a size column"
+    printf '%s' "$sized_out" | grep -qE '^[0-9]+ apps?, .* on disk$' \
+      && pass "apps with size totals the disk usage" \
+      || fail "apps with size totals the disk usage" "no total in footer" "$sized_out"
+  elif printf '%s' "$sized_out" | grep -qF "I didn't find any installed apps."; then
+    pass "apps with size adds a size column (skipped: no apps on this host)"
+    pass "apps with size totals the disk usage (skipped: no apps on this host)"
+  else
+    fail "apps with size adds a size column" "no size column" "$sized_out"
+    fail "apps with size totals the disk usage" "no output" "$sized_out"
+  fi
+
+  expect_line "with needs size" "apps with" '"with" needs "size" — for example: apps with size'
+  expect_line "with rejects other words" "apps with skipped" 'After "apps with" I only know "size", not "skipped".'
+  expect_line "with size goes before where" "apps where source = 'macos' with size" \
+    '"with size" goes before "where" — for example: apps with size where source = '"'"'homebrew'"'"''
+  expect_contains "count(apps) refuses with size" "count(apps) with size" "A count has no size column"
 
   section "summary"
   printf '  %s%d passed%s' "$GREEN" "$PASS" "$OFF"

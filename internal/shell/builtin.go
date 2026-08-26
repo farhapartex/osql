@@ -103,6 +103,7 @@ func builtinHelp(s *Shell, args []string) error {
 	w := tabwriter.NewWriter(s.cfg.Out, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(w, "files|folders|all from '<path>'\tlist what is in a folder")
 	fmt.Fprintln(w, "count(files|folders|all) from '<path>'\tcount what is in a folder")
+	fmt.Fprintln(w, "apps [with size] [where ...]\tlist the apps installed on this machine")
 	fmt.Fprintln(w, "open '<path>'\tprint what is inside a text file")
 	fmt.Fprintln(w, "new file|folder '<path>' [data='...']\tmake a new file or folder")
 	fmt.Fprintln(w, "summary from '<path>' [recursive]\twhat is in a folder, at a glance")

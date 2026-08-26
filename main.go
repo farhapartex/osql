@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/farhapartex/osql/internal/apps"
 	"github.com/farhapartex/osql/internal/buildinfo"
 	"github.com/farhapartex/osql/internal/cli"
 	"github.com/farhapartex/osql/internal/engine"
@@ -104,6 +105,7 @@ func run(args []string) error {
 	maker := engine.NewNewExecutor(fsys, resolver)
 	summarizer := engine.NewSummaryExecutor(fsys, resolver, skip)
 	remover := engine.NewDeleteExecutor(fsys, resolver, compiler, vfs.NewTrash(home, nil))
+	lister := engine.NewAppsExecutor(apps.NewCatalog(apps.DefaultSources(home)...), compiler, apps.NewSizer())
 
 	input, interactive := reader.New(os.Stdin, os.Stdout, history)
 	defer input.Close()
@@ -114,9 +116,10 @@ func run(args []string) error {
 		Editing:       interactive,
 		Lexer:         query.NewLexer(),
 		Parser:        query.NewParser(compiler),
-		Engine:        engine.NewRegistry(selector, counter, opener, maker, summarizer, remover),
+		Engine:        engine.NewRegistry(selector, counter, opener, maker, summarizer, remover, lister),
 		Renderer:      output.NewTable(),
 		CountRenderer: output.NewCount(),
+		Apps:          output.NewApps(),
 		Summary:       output.NewSummary(),
 		Delete:        output.NewDelete(),
 		Store:         store,

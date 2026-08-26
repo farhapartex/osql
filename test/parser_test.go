@@ -191,7 +191,16 @@ func TestParseUnknownFieldListsRegisteredFields(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected an error")
 	}
-	want := `I don't know the field "extension". I understand: name, name_like, type, count(child)`
+	want := `I don't know the field "extension". I understand: name, name_like, type`
+	if err.Error() != want {
+		t.Errorf("\n got: %s\nwant: %s", err.Error(), want)
+	}
+
+	_, err = parse(t, "folders from 'a' where extension = 'txt'")
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	want = `I don't know the field "extension". I understand: name, name_like, type, count(child)`
 	if err.Error() != want {
 		t.Errorf("\n got: %s\nwant: %s", err.Error(), want)
 	}

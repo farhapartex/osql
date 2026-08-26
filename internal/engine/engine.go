@@ -23,6 +23,17 @@ type Row struct {
 type Entry struct {
 	DirEntry fs.DirEntry
 	Path     string
+	App      *App
+}
+
+func (e Entry) Name() string {
+	if e.App != nil {
+		return e.App.Name
+	}
+	if e.DirEntry == nil {
+		return ""
+	}
+	return e.DirEntry.Name()
 }
 
 type Value struct {

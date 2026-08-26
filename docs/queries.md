@@ -22,6 +22,9 @@ all from 'Documents'        # both
 Always use the plural. `file` and `folder` are not accepted — `osql` will
 correct you.
 
+There is a fourth thing you can ask for, and it is the one that takes no folder:
+`apps` lists what is installed on your machine. See [Installed apps](apps.md).
+
 ## How paths work
 
 `osql` starts at your home folder and never looks outside it. So all three of
@@ -151,3 +154,4 @@ becoming part of a name.
 
 - [Filtering](filtering.md) — narrow results with `where`
 - [Counting](counting.md) — get a number instead of a list
+- [Installed apps](apps.md) — list the apps on your machine

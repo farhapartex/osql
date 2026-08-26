@@ -40,7 +40,7 @@ func (NameField) NormalizeValue(v string) (Value, error) {
 }
 
 func (NameField) Extract(e Entry) (Value, error) {
-	return Value{Text: e.DirEntry.Name()}, nil
+	return Value{Text: e.Name()}, nil
 }
 
 type NameLikeField struct{}
@@ -49,21 +49,23 @@ func (NameLikeField) Field() string               { return FieldNameLike }
 func (NameLikeField) Cost() int                   { return CostFree }
 func (NameLikeField) AllowedOperators() []string  { return equalityOperators }
 func (NameLikeField) AppliesTo(query.Target) bool { return true }
+func (NameLikeField) Glob() bool                  { return true }
 
 func (NameLikeField) NormalizeValue(v string) (Value, error) {
 	return Value{Text: v}, nil
 }
 
 func (NameLikeField) Extract(e Entry) (Value, error) {
-	return Value{Text: e.DirEntry.Name()}, nil
+	return Value{Text: e.Name()}, nil
 }
 
 type TypeField struct{}
 
-func (TypeField) Field() string               { return FieldType }
-func (TypeField) Cost() int                   { return CostFree }
-func (TypeField) AllowedOperators() []string  { return equalityOperators }
-func (TypeField) AppliesTo(query.Target) bool { return true }
+func (TypeField) Field() string              { return FieldType }
+func (TypeField) Cost() int                  { return CostFree }
+func (TypeField) AllowedOperators() []string { return equalityOperators }
+
+func (TypeField) AppliesTo(t query.Target) bool { return t != query.TargetApps }
 
 func (TypeField) NormalizeValue(v string) (Value, error) {
 	return Value{Text: strings.TrimPrefix(v, ".")}, nil
@@ -89,7 +91,7 @@ func (CountChildField) Cost() int                  { return CostReadDir }
 func (CountChildField) AllowedOperators() []string { return orderingOperators }
 
 func (CountChildField) AppliesTo(t query.Target) bool {
-	return t != query.TargetFiles
+	return t != query.TargetFiles && t != query.TargetApps
 }
 
 func (CountChildField) NormalizeValue(v string) (Value, error) {

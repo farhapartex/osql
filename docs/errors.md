@@ -80,7 +80,7 @@ Always plural. `file` and `folder` are not accepted.
 
 ---
 
-**`I can list "files", "folders", or "all" — not "filez". Did you mean "files"?`**
+**`I can list "files", "folders", "all", or "apps" — not "filez". Did you mean "files"?`**
 
 A typo. If the word is close to a real one, the message says which.
 
@@ -116,10 +116,20 @@ The query stops in the middle. Finish the condition.
 
 ## Filters
 
-**`I don't know the field "extension". I understand: name, name_like, type, count(child)`**
+**`I don't know the field "extension". I understand: name, name_like, type`**
 
-That is not a field you can filter on. The message lists the ones you can. For
-extensions the field is called `type`.
+That is not a field you can filter on. The message lists the ones you can, and
+the list depends on what you are asking for — `folders` adds `count(child)`, and
+`apps` offers `version`, `source`, and `id`. For extensions the field is called
+`type`.
+
+---
+
+**`"type" doesn't work with "apps". There you can filter on name, name_like, version, version_like, source, id, and id_like.`**
+
+The field is real, but not for the thing you asked for. `type` and
+`count(child)` describe files and folders; `version`, `source`, and `id`
+describe apps. The message lists what does work.
 
 ---
 
@@ -208,6 +218,51 @@ You wrote `with` on its own. The only thing that follows it is `skipped`.
 
 Same idea — `with skipped` is the one option.
 
+## Apps
+
+**`"apps" already looks everywhere your system installs apps, so it needs no path. Try: apps`**
+
+`apps` is the one query without a folder. osql already knows where apps live.
+
+---
+
+**`"apps" is never recursive — looking inside an app would list the helpers it ships with as if they were apps. Try: apps`**
+
+An app is a folder full of smaller programs. Searching inside it would fill your
+list with things you never installed.
+
+---
+
+**`I won't uninstall apps — removing one properly also means its settings and background helpers, which I can't do safely. Use your system's own uninstaller.`**
+
+`delete apps` does nothing, on purpose. See [Installed apps](apps.md).
+
+---
+
+**`I couldn't read your installed apps: permission denied`**
+
+osql could not read the folders where apps live.
+
+---
+
+**`"with" needs "size" — for example: apps with size`**
+
+`with` on its own. For apps the only thing that follows it is `size`.
+
+---
+
+**`"with size" goes before "where" — for example: apps with size where source = 'homebrew'`**
+
+Right words, wrong order. `with size` says what to show; `where` says what to
+keep, and it comes last.
+
+---
+
+**`A count has no size column, and measuring every app would take a while for a number you didn't ask for. Try: apps with size`**
+
+`count(apps) with size` has nowhere to put a size, and measuring apps is slow
+enough that osql will not do it for nothing.
+
 ## Deleting
 
 **`I won't empty '/Users/you' itself. Name a folder inside it, or add a where clause.`**
@@ -258,7 +313,7 @@ helpp
 ```
 
 ```
-I can list "files", "folders", or "all" — not "helpp".
+I can list "files", "folders", "all", or "apps" — not "helpp".
 ```
 
 It should suggest `help`. Type `help` to see the list of commands.

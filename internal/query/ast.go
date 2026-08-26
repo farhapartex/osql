@@ -6,12 +6,14 @@ const (
 	TargetAll Target = iota
 	TargetFiles
 	TargetFolders
+	TargetApps
 )
 
 var targetNames = map[Target]string{
 	TargetAll:     "all",
 	TargetFiles:   "files",
 	TargetFolders: "folders",
+	TargetApps:    "apps",
 }
 
 func (t Target) String() string {
@@ -76,4 +78,5 @@ type Statement struct {
 	IncludeSkipped bool
 	Permanent      bool
 	Single         bool
+	WithSize       bool
 }
