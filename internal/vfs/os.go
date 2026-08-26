@@ -44,6 +44,13 @@ func (f *OSFileSystem) OSPath(fsPath string) string {
 	return OSPath(f.root, fsPath)
 }
 
+func (f *OSFileSystem) Remove(name string) error {
+	if !fs.ValidPath(name) {
+		return ErrInvalidPath
+	}
+	return os.RemoveAll(f.OSPath(name))
+}
+
 func (f *OSFileSystem) Create(name string) (io.WriteCloser, error) {
 	if !fs.ValidPath(name) {
 		return nil, ErrInvalidPath

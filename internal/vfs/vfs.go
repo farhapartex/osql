@@ -23,4 +23,5 @@ type Creator interface {
 type WritableFileSystem interface {
 	FileSystem
 	Creator
+	Remover
 }
