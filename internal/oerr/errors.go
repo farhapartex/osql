@@ -31,6 +31,7 @@ const (
 	KindSingularTarget
 	KindUnknownTarget
 	KindMissingFrom
+	KindWithNeedsSkipped
 	KindMissingPath
 	KindMissingFilePath
 	KindUnknownField
@@ -66,6 +67,7 @@ var kindNames = map[Kind]string{
 	KindSingularTarget:       "singular_target",
 	KindUnknownTarget:        "unknown_target",
 	KindMissingFrom:          "missing_from",
+	KindWithNeedsSkipped:     "with_needs_skipped",
 	KindMissingPath:          "missing_path",
 	KindMissingFilePath:      "missing_file_path",
 	KindUnknownField:         "unknown_field",
@@ -221,6 +223,13 @@ func UnknownTarget(got string, known []string) *Error {
 
 func MissingFrom() *Error {
 	return newError(KindMissingFrom, "I need \"from\" before the folder — for example: files from 'Documents'")
+}
+
+func WithNeedsSkipped(got string) *Error {
+	if got == "" {
+		return newError(KindWithNeedsSkipped, "\"with\" needs \"skipped\" — for example: summary from 'Documents' recursive with skipped")
+	}
+	return newError(KindWithNeedsSkipped, "I only know \"with skipped\", not \"with %s\".", got)
 }
 
 func MissingPath() *Error {
