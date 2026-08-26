@@ -74,4 +74,6 @@ type Statement struct {
 	Data           string
 	HasData        bool
 	IncludeSkipped bool
+	Permanent      bool
+	Single         bool
 }
