@@ -54,6 +54,9 @@ const (
 	KindAppsUnavailable
 	KindCannotDeleteApps
 	KindFieldNotForTarget
+	KindWithNeedsSize
+	KindWithSizeComesFirst
+	KindCountHasNoSize
 )
 
 var kindNames = map[Kind]string{
@@ -102,6 +105,9 @@ var kindNames = map[Kind]string{
 	KindAppsUnavailable:      "apps_unavailable",
 	KindCannotDeleteApps:     "cannot_delete_apps",
 	KindFieldNotForTarget:    "field_not_for_target",
+	KindWithNeedsSize:        "with_needs_size",
+	KindWithSizeComesFirst:   "with_size_comes_first",
+	KindCountHasNoSize:       "count_has_no_size",
 }
 
 func (k Kind) String() string {
@@ -332,6 +338,21 @@ func FieldNotForTarget(field, target string, usable []string) *Error {
 		return newError(KindFieldNotForTarget, "\"%s\" doesn't work with \"%s\".", field, target)
 	}
 	return newError(KindFieldNotForTarget, "\"%s\" doesn't work with \"%s\". There you can filter on %s.", field, target, joinWithAnd(usable))
+}
+
+func WithNeedsSize(got string) *Error {
+	if got == "" {
+		return newError(KindWithNeedsSize, "\"with\" needs \"size\" — for example: apps with size")
+	}
+	return newError(KindWithNeedsSize, "After \"apps with\" I only know \"size\", not \"%s\".", got)
+}
+
+func CountHasNoSize() *Error {
+	return newError(KindCountHasNoSize, "A count has no size column, and measuring every app would take a while for a number you didn't ask for. Try: apps with size")
+}
+
+func WithSizeComesFirst() *Error {
+	return newError(KindWithSizeComesFirst, "\"with size\" goes before \"where\" — for example: apps with size where source = 'homebrew'")
 }
 
 func AppsNeedNoPath() *Error {
