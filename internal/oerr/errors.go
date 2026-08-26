@@ -21,6 +21,13 @@ const (
 	KindMissingNewPath
 	KindMissingDataValue
 	KindCannotCreate
+	KindCannotDelete
+	KindRefuseDeleteRoot
+	KindDeleteKindMismatch
+	KindTrashUnavailable
+	KindTrashCrossDevice
+	KindMissingDeleteTarget
+	KindMissingDeletePath
 	KindCannotRead
 	KindNoPermission
 	KindOutsideRoot
@@ -57,6 +64,13 @@ var kindNames = map[Kind]string{
 	KindMissingNewPath:       "missing_new_path",
 	KindMissingDataValue:     "missing_data_value",
 	KindCannotCreate:         "cannot_create",
+	KindCannotDelete:         "cannot_delete",
+	KindRefuseDeleteRoot:     "refuse_delete_root",
+	KindDeleteKindMismatch:   "delete_kind_mismatch",
+	KindTrashUnavailable:     "trash_unavailable",
+	KindTrashCrossDevice:     "trash_cross_device",
+	KindMissingDeleteTarget:  "missing_delete_target",
+	KindMissingDeletePath:    "missing_delete_path",
 	KindCannotRead:           "cannot_read",
 	KindNoPermission:         "no_permission",
 	KindOutsideRoot:          "outside_root",
@@ -169,6 +183,41 @@ func singularOf(plural string) string {
 
 func CannotCreate(path string, reason string) *Error {
 	return newError(KindCannotCreate, "I couldn't create '%s': %s", path, reason)
+}
+
+func CannotDelete(path, reason string) *Error {
+	return newError(KindCannotDelete, "I couldn't delete '%s': %s", path, reason)
+}
+
+func RefuseDeleteRoot(root string) *Error {
+	return newError(KindRefuseDeleteRoot, "I won't empty '%s' itself. Name a folder inside it, or add a where clause.", root)
+}
+
+func DeleteKindMismatch(path, actual string) *Error {
+	other := "folder"
+	if actual == "folder" {
+		other = "file"
+	}
+	return newError(KindDeleteKindMismatch, "'%s' is a %s, not a %s. Try: delete %s '%s'", path, actual, other, actual, path)
+}
+
+func TrashUnavailable(reason string) *Error {
+	return newError(KindTrashUnavailable, "I couldn't reach the trash (%s). Add \"permanently\" to delete for good.", reason)
+}
+
+func TrashCrossDevice(path string) *Error {
+	return newError(KindTrashCrossDevice, "'%s' is on another disk, so it can't go to the trash. Add \"permanently\" to delete it for good.", path)
+}
+
+func MissingDeleteTarget(got string) *Error {
+	if got == "" {
+		return newError(KindMissingDeleteTarget, "I need \"file\", \"folder\", \"files\", \"folders\" or \"all\" after \"delete\" — for example: delete file 'notes.txt'")
+	}
+	return newError(KindMissingDeleteTarget, "I can't delete \"%s\". Try \"delete file\", \"delete folder\", or \"delete files from\".", got)
+}
+
+func MissingDeletePath(kind string) *Error {
+	return newError(KindMissingDeletePath, "I need a path after \"delete %s\" — for example: delete %s '%s'", kind, kind, exampleNameFor(kind))
 }
 
 func CannotRead(path string) *Error {
