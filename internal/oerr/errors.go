@@ -40,6 +40,7 @@ const (
 	KindUnexpectedInput
 	KindIncompleteQuery
 	KindUnclosedQuote
+	KindBadEscape
 )
 
 var kindNames = map[Kind]string{
@@ -74,6 +75,7 @@ var kindNames = map[Kind]string{
 	KindUnexpectedInput:      "unexpected_input",
 	KindIncompleteQuery:      "incomplete_query",
 	KindUnclosedQuote:        "unclosed_quote",
+	KindBadEscape:            "bad_escape",
 }
 
 func (k Kind) String() string {
@@ -247,6 +249,10 @@ func CountChildOnFiles() *Error {
 
 func CountChildNonNumeric() *Error {
 	return newError(KindCountChildNonNumeric, "count(child) needs a number — for example: count(child) > 10")
+}
+
+func BadEscape(got string) *Error {
+	return newError(KindBadEscape, "I don't know the escape \"\\%s\". I understand: \\n, \\t, \\r, \\\\ and \\'", got)
 }
 
 func UnclosedQuote(fragment string) *Error {

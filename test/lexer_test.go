@@ -1,6 +1,7 @@
 package test
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -400,7 +401,8 @@ func FuzzLex(f *testing.F) {
 	f.Fuzz(func(t *testing.T, input string) {
 		tokens, err := lexer.Lex(input)
 		if err != nil {
-			if !oerr.Is(err, oerr.KindUnclosedQuote) {
+			var oe *oerr.Error
+			if !errors.As(err, &oe) {
 				t.Fatalf("Lex(%q) returned a non-oerr error: %v", input, err)
 			}
 			if tokens != nil {
@@ -424,4 +426,125 @@ func FuzzLex(f *testing.F) {
 			}
 		}
 	})
+}
+
+func TestLexEscapes(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{"newline", `'a\nb'`, "a\nb"},
+		{"tab", `'a\tb'`, "a\tb"},
+		{"carriage return", `'a\rb'`, "a\rb"},
+		{"backslash", `'a\\b'`, `a\b`},
+		{"single quote", `'it\'s'`, "it's"},
+		{"only an escape", `'\n'`, "\n"},
+		{"repeated newlines", `'a\n\nb'`, "a\n\nb"},
+		{"escape at the start", `'\ta'`, "\ta"},
+		{"escape at the end", `'a\n'`, "a\n"},
+		{"quote at the end", `'a\''`, "a'"},
+		{"backslash before a known escape", `'a\\nb'`, `a\nb`},
+		{"multiple kinds", `'a\tb\nc\\d\'e'`, "a\tb\nc\\d'e"},
+		{"unicode around escapes", `'日\n本'`, "日\n本"},
+		{"no escapes at all", `'plain text'`, "plain text"},
+		{"percent is not an escape", `'%report%'`, "%report%"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := lexTokens(t, tt.input)
+			if len(got) != 1 {
+				t.Fatalf("got %d tokens, want 1", len(got))
+			}
+			if got[0].value != tt.want {
+				t.Errorf("Lex(%s) = %q, want %q", tt.input, got[0].value, tt.want)
+			}
+		})
+	}
+}
+
+func TestLexRejectsUnknownEscapes(t *testing.T) {
+	for _, input := range []string{`'a\qb'`, `'\z'`, `'\ '`, `'a\日b'`} {
+		t.Run(input, func(t *testing.T) {
+			_, err := query.NewLexer().Lex(input)
+			if err == nil {
+				t.Fatalf("Lex(%s) accepted an unknown escape", input)
+			}
+			if !oerr.Is(err, oerr.KindBadEscape) {
+				t.Errorf("error kind = %v, want bad_escape", err)
+			}
+		})
+	}
+}
+
+func TestLexBadEscapeNamesTheCharacter(t *testing.T) {
+	_, err := query.NewLexer().Lex(`'a\qb'`)
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	want := `I don't know the escape "\q". I understand: \n, \t, \r, \\ and \'`
+	if err.Error() != want {
+		t.Errorf("\n got: %s\nwant: %s", err.Error(), want)
+	}
+}
+
+func TestLexEscapedQuoteDoesNotCloseTheString(t *testing.T) {
+	got := lexTokens(t, `'a\'b' 'second'`)
+
+	if len(got) != 2 {
+		t.Fatalf("got %d tokens, want 2: %v", len(got), got)
+	}
+	if got[0].value != "a'b" {
+		t.Errorf("first = %q, want \"a'b\"", got[0].value)
+	}
+	if got[1].value != "second" {
+		t.Errorf("second = %q, want \"second\"", got[1].value)
+	}
+}
+
+func TestLexTrailingBackslashIsUnclosed(t *testing.T) {
+	for _, input := range []string{`'a\'`, `'\`, `'abc\`} {
+		t.Run(input, func(t *testing.T) {
+			_, err := query.NewLexer().Lex(input)
+			if err == nil {
+				t.Fatalf("Lex(%s) accepted an unterminated string", input)
+			}
+			if !oerr.Is(err, oerr.KindUnclosedQuote) {
+				t.Errorf("error kind = %v, want unclosed_quote", err)
+			}
+		})
+	}
+}
+
+func TestLexEscapesInAnyStringPosition(t *testing.T) {
+	got := lexTokens(t, `files from 'my\tfolder' where name = 'a\nb'`)
+
+	if len(got) != 7 {
+		t.Fatalf("got %d tokens, want 7: %v", len(got), got)
+	}
+	if got[2].value != "my\tfolder" {
+		t.Errorf("path = %q; escapes work in every quoted string", got[2].value)
+	}
+	if got[6].value != "a\nb" {
+		t.Errorf("value = %q", got[6].value)
+	}
+}
+
+func TestLexStringsWithoutEscapesDoNotAllocate(t *testing.T) {
+	lexer := query.NewLexer()
+	plain := "files from 'Documents' where name_like = '%report%'"
+
+	allocs := testing.AllocsPerRun(200, func() {
+		lexer.Lex(plain)
+	})
+
+	escaped := `files from 'Documents' where name = 'a\nb'`
+	escapedAllocs := testing.AllocsPerRun(200, func() {
+		lexer.Lex(escaped)
+	})
+
+	if escapedAllocs <= allocs {
+		t.Errorf("escaped lexing allocated %.0f and plain allocated %.0f; plain should stay on the zero-copy path", escapedAllocs, allocs)
+	}
 }

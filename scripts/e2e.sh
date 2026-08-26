@@ -345,6 +345,18 @@ exit
     pass "nothing is created outside the root"
   fi
 
+  section "escapes"
+  expect_line "newline in data" "new file 'multi.txt' data='line one\\nline two'" "Created 'multi.txt'"
+  expect_line "first line reads back" "open 'multi.txt'" "line one"
+  expect_line "second line reads back" "open 'multi.txt'" "line two"
+  expect_line "single quote in data" "new file 'apos.txt' data='it\\'s working'" "Created 'apos.txt'"
+  expect_line "apostrophe reads back" "open 'apos.txt'" "it's working"
+  expect_line "backslash in data" "new file 'bslash.txt' data='a\\\\b'" "Created 'bslash.txt'"
+  expect_line "backslash reads back" "open 'bslash.txt'" 'a\b'
+  expect_contains "escapes work in paths too" "files from 'docs' where name = 'notes.txt'" "notes.txt"
+  expect_line "unknown escape is refused" "new file 'z.txt' data='a\\qb'" "I don't know the escape \"\\q\". I understand: \\n, \\t, \\r, \\\\ and \\'"
+  expect_line "trailing backslash is unclosed" "files from 'abc\\" "This quote is never closed: 'abc\\ — add a closing '"
+
   section "outcomes"
   expect_line "no matches" "files from 'docs' where type = 'zzz'" "No files matched."
   expect_line "empty folder" "folders from 'empty_ish'" "'empty_ish' is empty."

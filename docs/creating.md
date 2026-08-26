@@ -36,18 +36,39 @@ hello hello line testing
 
 Without `data=` you get an empty file, the way `touch` does.
 
-### Two limits on data
+### Multiple lines and quotes
 
-The text is written exactly as you typed it — no newline is added at the end.
-
-Because quoted text has no escape characters, **`data` cannot contain a single
-quote**, and it is **one line only**. So this does not work:
+Use `\n` for a line break and `\'` for an apostrophe:
 
 ```bash
-new file 'x.txt' data='it's broken'
+new file 'notes.txt' data='line one\nline two\nline three'
+new file 'diary.txt' data='it\'s working'
 ```
 
-For anything longer, make the file and edit it in your editor.
+```bash
+open 'notes.txt'
+```
+
+```
+line one
+line two
+line three
+```
+
+The full list is `\n` (new line), `\t` (tab), `\r`, `\\` (one backslash) and
+`\'` (apostrophe). Anything else after a backslash is refused, so a typo does not
+end up inside your file:
+
+```bash
+new file 'x.txt' data='a\qb'
+```
+
+```
+I don't know the escape "\q". I understand: \n, \t, \r, \\ and \'
+```
+
+The text is otherwise written exactly as you typed it — no newline is added at
+the end. For anything long, make the file and edit it in your editor.
 
 Folders hold files, not text, so `data` on a folder is refused:
 
