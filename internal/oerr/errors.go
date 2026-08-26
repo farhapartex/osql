@@ -49,6 +49,11 @@ const (
 	KindIncompleteQuery
 	KindUnclosedQuote
 	KindBadEscape
+	KindAppsNeedNoPath
+	KindAppsNotRecursive
+	KindAppsUnavailable
+	KindCannotDeleteApps
+	KindFieldNotForTarget
 )
 
 var kindNames = map[Kind]string{
@@ -92,6 +97,11 @@ var kindNames = map[Kind]string{
 	KindIncompleteQuery:      "incomplete_query",
 	KindUnclosedQuote:        "unclosed_quote",
 	KindBadEscape:            "bad_escape",
+	KindAppsNeedNoPath:       "apps_need_no_path",
+	KindAppsNotRecursive:     "apps_not_recursive",
+	KindAppsUnavailable:      "apps_unavailable",
+	KindCannotDeleteApps:     "cannot_delete_apps",
+	KindFieldNotForTarget:    "field_not_for_target",
 }
 
 func (k Kind) String() string {
@@ -265,9 +275,9 @@ func SingularTarget(got string) *Error {
 
 func UnknownTarget(got string, known []string) *Error {
 	if suggestion, ok := Suggest(got, known); ok {
-		return newError(KindUnknownTarget, "I can list \"files\", \"folders\", or \"all\" — not \"%s\". Did you mean \"%s\"?", got, suggestion)
+		return newError(KindUnknownTarget, "I can list \"files\", \"folders\", \"all\", or \"apps\" — not \"%s\". Did you mean \"%s\"?", got, suggestion)
 	}
-	return newError(KindUnknownTarget, "I can list \"files\", \"folders\", or \"all\" — not \"%s\".", got)
+	return newError(KindUnknownTarget, "I can list \"files\", \"folders\", \"all\", or \"apps\" — not \"%s\".", got)
 }
 
 func MissingFrom() *Error {
@@ -315,6 +325,29 @@ func BadEscape(got string) *Error {
 
 func UnclosedQuote(fragment string) *Error {
 	return newError(KindUnclosedQuote, "This quote is never closed: '%s — add a closing '", fragment)
+}
+
+func FieldNotForTarget(field, target string, usable []string) *Error {
+	if len(usable) == 0 {
+		return newError(KindFieldNotForTarget, "\"%s\" doesn't work with \"%s\".", field, target)
+	}
+	return newError(KindFieldNotForTarget, "\"%s\" doesn't work with \"%s\". There you can filter on %s.", field, target, joinWithAnd(usable))
+}
+
+func AppsNeedNoPath() *Error {
+	return newError(KindAppsNeedNoPath, "\"apps\" already looks everywhere your system installs apps, so it needs no path. Try: apps")
+}
+
+func AppsNotRecursive() *Error {
+	return newError(KindAppsNotRecursive, "\"apps\" is never recursive — looking inside an app would list the helpers it ships with as if they were apps. Try: apps")
+}
+
+func AppsUnavailable(reason string) *Error {
+	return newError(KindAppsUnavailable, "I couldn't read your installed apps: %s", reason)
+}
+
+func CannotDeleteApps() *Error {
+	return newError(KindCannotDeleteApps, "I won't uninstall apps — removing one properly also means its settings and background helpers, which I can't do safely. Use your system's own uninstaller.")
 }
 
 func joinWithAnd(items []string) string {
