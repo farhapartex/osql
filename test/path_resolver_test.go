@@ -23,28 +23,34 @@ func rootedResolver(t *testing.T) *engine.PathResolver {
 	return engine.NewPathResolver(&fakeFileSystem{fsys: fsys}, "/")
 }
 
-func TestExpandIsAlwaysRootRelative(t *testing.T) {
-	r := engine.NewPathResolver(&fakeFileSystem{fsys: fstest.MapFS{}}, "/home/user")
+func TestExpandIsRelativeToTheCurrentDirectory(t *testing.T) {
+	r := engine.NewPathResolverAt(&fakeFileSystem{fsys: fstest.MapFS{}}, "/work/project", "/home/user")
 
 	tests := []struct {
 		in   string
 		want string
 	}{
-		{"Documents", "/home/user/Documents"},
-		{"/Documents", "/home/user/Documents"},
-		{"~/Documents", "/home/user/Documents"},
-		{"./Documents", "/home/user/Documents"},
-		{"Documents/", "/home/user/Documents"},
-		{"/Documents/", "/home/user/Documents"},
-		{"//Documents//", "/home/user/Documents"},
-		{"Documents/deep", "/home/user/Documents/deep"},
-		{"/Documents/deep", "/home/user/Documents/deep"},
-		{"  ~/Documents  ", "/home/user/Documents"},
+		{"Documents", "/work/project/Documents"},
+		{"./Documents", "/work/project/Documents"},
+		{"Documents/", "/work/project/Documents"},
+		{"Documents/deep", "/work/project/Documents/deep"},
+		{"Documents/../Downloads", "/work/project/Downloads"},
+		{"", "/work/project"},
+		{".", "/work/project"},
+
+		{"/Documents", "/Documents"},
+		{"/Documents/", "/Documents"},
+		{"//Documents//", "/Documents"},
+		{"/etc/hosts", "/etc/hosts"},
+		{"/", "/"},
+
 		{"~", "/home/user"},
-		{".", "/home/user"},
-		{"/", "/home/user"},
-		{"", "/home/user"},
-		{"Documents/../Downloads", "/home/user/Downloads"},
+		{"~/Documents", "/home/user/Documents"},
+		{"  ~/Documents  ", "/home/user/Documents"},
+
+		{"..", "/work"},
+		{"../..", "/"},
+		{"../sibling", "/work/sibling"},
 	}
 
 	for _, tt := range tests {
@@ -56,36 +62,105 @@ func TestExpandIsAlwaysRootRelative(t *testing.T) {
 	}
 }
 
-func TestExpandTreatsTheThreeFormsAsOne(t *testing.T) {
-	r := engine.NewPathResolver(&fakeFileSystem{fsys: fstest.MapFS{}}, "/home/user")
+func TestExpandTreatsTheThreeFormsAsDifferent(t *testing.T) {
+	r := engine.NewPathResolverAt(&fakeFileSystem{fsys: fstest.MapFS{}}, "/work/project", "/home/user")
 
 	bare := r.Expand("Documents")
-	rooted := r.Expand("/Documents")
+	absolute := r.Expand("/Documents")
 	tilde := r.Expand("~/Documents")
 
-	if bare != rooted || bare != tilde {
-		t.Errorf("the three forms diverged: %q, %q, %q", bare, rooted, tilde)
+	if bare == absolute || bare == tilde || absolute == tilde {
+		t.Errorf("these must now be three different places: %q, %q, %q", bare, absolute, tilde)
+	}
+	if bare != "/work/project/Documents" {
+		t.Errorf("bare = %q, want it relative to the current directory", bare)
+	}
+	if absolute != "/Documents" {
+		t.Errorf("absolute = %q, want the real absolute path", absolute)
+	}
+	if tilde != "/home/user/Documents" {
+		t.Errorf("tilde = %q, want it under home", tilde)
 	}
 }
 
-func TestExpandIgnoresTheWorkingDirectory(t *testing.T) {
-	r := engine.NewPathResolver(&fakeFileSystem{fsys: fstest.MapFS{}}, "/home/user")
+func TestChdirMovesTheCurrentDirectory(t *testing.T) {
+	fsys := fstest.MapFS{
+		"work/project/src/x.go": {Data: []byte("a")},
+		"work/other/y.go":       {Data: []byte("b")},
+	}
+	r := engine.NewPathResolverAt(&fakeFileSystem{fsys: fsys}, "/work/project", "/home/user")
 
-	cwd, err := os.Getwd()
-	if err != nil {
-		t.Skip(err)
+	if _, err := r.Chdir("src"); err != nil {
+		t.Fatalf("Chdir(\"src\") error = %v", err)
+	}
+	if r.Dir() != "/work/project/src" {
+		t.Errorf("Dir() = %q", r.Dir())
 	}
 
-	got := r.Expand("Documents")
-	if got == filepath.Join(cwd, "Documents") {
-		t.Error("Expand consulted the working directory; paths are root-relative")
+	if _, err := r.Chdir("../../other"); err != nil {
+		t.Fatalf("Chdir upward error = %v", err)
 	}
-	if got != "/home/user/Documents" {
-		t.Errorf("Expand(\"Documents\") = %q", got)
+	if r.Dir() != "/work/other" {
+		t.Errorf("Dir() = %q, want /work/other", r.Dir())
+	}
+
+	if _, err := r.Chdir("-"); err != nil {
+		t.Fatalf("Chdir(\"-\") error = %v", err)
+	}
+	if r.Dir() != "/work/project/src" {
+		t.Errorf("cd - gave %q, want the previous directory", r.Dir())
 	}
 }
 
-func TestResolveSucceedsForAllThreeForms(t *testing.T) {
+func TestChdirBareGoesHome(t *testing.T) {
+	fsys := fstest.MapFS{"home/user/x.txt": {Data: []byte("a")}, "work/y.txt": {Data: []byte("b")}}
+	r := engine.NewPathResolverAt(&fakeFileSystem{fsys: fsys}, "/work", "/home/user")
+
+	if _, err := r.Chdir(""); err != nil {
+		t.Fatalf("bare Chdir error = %v", err)
+	}
+	if r.Dir() != "/home/user" {
+		t.Errorf("Dir() = %q, want home", r.Dir())
+	}
+}
+
+func TestChdirRejectsMissingAndFiles(t *testing.T) {
+	fsys := fstest.MapFS{"work/file.txt": {Data: []byte("a")}}
+	r := engine.NewPathResolver(&fakeFileSystem{fsys: fsys}, "/work")
+
+	if _, err := r.Chdir("nowhere"); err == nil {
+		t.Error("Chdir into a missing folder succeeded")
+	}
+	if _, err := r.Chdir("file.txt"); !oerr.Is(err, oerr.KindCannotChangeDir) {
+		t.Errorf("Chdir into a file gave %v, want cannot_change_dir", err)
+	}
+	if r.Dir() != "/work" {
+		t.Errorf("a failed Chdir moved the directory to %q", r.Dir())
+	}
+}
+
+func TestDisplayAbbreviatesHome(t *testing.T) {
+	r := engine.NewPathResolverAt(&fakeFileSystem{fsys: fstest.MapFS{}}, "/home/user/work", "/home/user")
+
+	tests := []struct {
+		in   string
+		want string
+	}{
+		{"/home/user", "~"},
+		{"/home/user/work", "~/work"},
+		{"/home/user/work/deep", "~/work/deep"},
+		{"/etc", "/etc"},
+		{"/home/userother", "/home/userother"},
+	}
+
+	for _, tt := range tests {
+		if got := r.Display(tt.in); got != tt.want {
+			t.Errorf("Display(%q) = %q, want %q", tt.in, got, tt.want)
+		}
+	}
+}
+
+func TestResolveSucceedsFromRootWhereAllFormsAgree(t *testing.T) {
 	r := rootedResolver(t)
 
 	for _, input := range []string{"Documents", "/Documents", "~/Documents", "./Documents"} {
@@ -158,33 +233,33 @@ func TestResolveClassifiesErrors(t *testing.T) {
 	}
 }
 
-func TestResolveRefusesToEscapeTheRoot(t *testing.T) {
-	fsys := fstest.MapFS{"box/inside.txt": {Data: []byte("a")}, "outside.txt": {Data: []byte("b")}}
+func TestResolveWalksAboveTheStartDirectory(t *testing.T) {
+	fsys := fstest.MapFS{
+		"box/inside.txt": {Data: []byte("a")},
+		"sibling/x.txt":  {Data: []byte("b")},
+	}
 	r := engine.NewPathResolver(&fakeFileSystem{fsys: fsys}, "/box")
 
-	for _, input := range []string{"..", "../", "../outside.txt", "../..", "inside/../../elsewhere"} {
-		t.Run(input, func(t *testing.T) {
-			_, err := r.Resolve(input)
-			if err == nil {
-				t.Fatalf("Resolve(%q) escaped the root", input)
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"..", "."},
+		{"../", "."},
+		{"../sibling", "sibling"},
+		{"inside/../../sibling", "sibling"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got, err := r.Resolve(tt.input)
+			if err != nil {
+				t.Fatalf("Resolve(%q) error = %v; \"..\" is allowed now", tt.input, err)
 			}
-			if !oerr.Is(err, oerr.KindOutsideRoot) {
-				t.Errorf("Resolve(%q) error kind = %v, want outside_root", input, err)
+			if got.FSPath != tt.want {
+				t.Errorf("Resolve(%q).FSPath = %q, want %q", tt.input, got.FSPath, tt.want)
 			}
 		})
-	}
-}
-
-func TestOutsideRootErrorNamesTheRoot(t *testing.T) {
-	r := engine.NewPathResolver(&fakeFileSystem{fsys: fstest.MapFS{}}, "/home/user")
-
-	_, err := r.Resolve("../etc")
-	if err == nil {
-		t.Fatal("expected an error")
-	}
-	want := "I can only look inside '/home/user'. '../etc' points outside it."
-	if err.Error() != want {
-		t.Errorf("\n got: %s\nwant: %s", err.Error(), want)
 	}
 }
 
@@ -201,42 +276,48 @@ func TestResolveErrorQuotesThePathAsTyped(t *testing.T) {
 	}
 }
 
-func TestResolverRootIsCleaned(t *testing.T) {
+func TestResolverDirIsCleaned(t *testing.T) {
 	r := engine.NewPathResolver(&fakeFileSystem{fsys: fstest.MapFS{}}, "/home/user/")
 
-	if r.Root() != "/home/user" {
-		t.Errorf("Root() = %q, want the cleaned \"/home/user\"", r.Root())
+	if r.Dir() != "/home/user" {
+		t.Errorf("Dir() = %q, want the cleaned \"/home/user\"", r.Dir())
 	}
 }
 
-func TestResolverDefaultsRootToSeparator(t *testing.T) {
+func TestResolverDefaultsDirToSeparator(t *testing.T) {
 	r := engine.NewPathResolver(&fakeFileSystem{fsys: fstest.MapFS{}}, "")
 
-	if r.Root() != "/" {
-		t.Errorf("Root() = %q, want \"/\"", r.Root())
+	if r.Dir() != "/" {
+		t.Errorf("Dir() = %q, want \"/\"", r.Dir())
 	}
 }
 
-func TestResolveOnRealFilesystemAnchoredAtRoot(t *testing.T) {
+func TestResolveOnRealFilesystemUsesTheCurrentDirectory(t *testing.T) {
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, "Documents", "deep"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 
-	r := engine.NewPathResolver(vfs.NewOS(root), root)
+	r := engine.NewPathResolver(vfs.OS(), root)
 
-	for _, input := range []string{"Documents", "/Documents", "~/Documents"} {
-		got, err := r.Resolve(input)
-		if err != nil {
-			t.Fatalf("Resolve(%q) error = %v", input, err)
-		}
-		if got.FSPath != "Documents" {
-			t.Errorf("Resolve(%q).FSPath = %q, want \"Documents\"", input, got.FSPath)
-		}
+	relative, err := r.Resolve("Documents")
+	if err != nil {
+		t.Fatalf("Resolve(\"Documents\") error = %v", err)
+	}
+	if relative.Absolute != filepath.Join(root, "Documents") {
+		t.Errorf("Absolute = %q, want it under the start directory", relative.Absolute)
 	}
 
-	if _, err := r.Resolve("/etc"); err == nil {
-		t.Error("an absolute system path resolved; everything is root-relative now")
+	absolute, err := r.Resolve(filepath.Join(root, "Documents", "deep"))
+	if err != nil {
+		t.Fatalf("an absolute path must resolve: %v", err)
+	}
+	if absolute.Absolute != filepath.Join(root, "Documents", "deep") {
+		t.Errorf("Absolute = %q", absolute.Absolute)
+	}
+
+	if _, err := r.Resolve("/etc"); err != nil {
+		t.Errorf("/etc must be reachable now: %v", err)
 	}
 }
 
@@ -255,7 +336,7 @@ func TestResolveNoPermissionOnRealFilesystem(t *testing.T) {
 	}
 	t.Cleanup(func() { os.Chmod(locked, 0o755) })
 
-	r := engine.NewPathResolver(vfs.NewOS(root), root)
+	r := engine.NewPathResolver(vfs.OS(), root)
 
 	_, err := r.Resolve("locked/inner")
 	if err == nil {
