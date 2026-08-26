@@ -145,6 +145,14 @@ You compared it to text. It counts things, so it needs a number.
 **`This quote is never closed: 'Documents — add a closing '`**
 
 You opened a quote and never closed it. The message shows what came after it.
+Note that `\'` is an apostrophe, not a closing quote — `'abc\'` is still open.
+
+---
+
+**`I don't know the escape "\q". I understand: \n, \t, \r, \\ and \'`**
+
+You used a backslash followed by something that is not an escape. For a real
+backslash, write `\\`.
 
 ---
 

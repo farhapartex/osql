@@ -123,6 +123,27 @@ files from Documents
 File and folder names keep their capitals, though. `'.TXT'` and `'.txt'` are
 different things.
 
+## Special characters in quotes
+
+Inside quotes, a backslash starts an escape:
+
+| You type | You get |
+|---|---|
+| `\n` | a new line |
+| `\t` | a tab |
+| `\r` | a carriage return |
+| `\\` | one backslash |
+| `\'` | an apostrophe |
+
+So a folder with an apostrophe in its name is written like this:
+
+```bash
+files from 'Ali\'s Documents'
+```
+
+Anything else after a backslash is an error, which stops a typo from quietly
+becoming part of a name.
+
 ## Next
 
 - [Filtering](filtering.md) — narrow results with `where`
