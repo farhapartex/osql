@@ -147,18 +147,19 @@ Everything is created inside your home folder, and these all mean one path:
 
 ```bash
 new file 'Documents/notes.txt'
-new file '/Documents/notes.txt'
+new file '/tmp/notes.txt'
 new file '~/Documents/notes.txt'
+new file '../sibling/notes.txt'
 ```
 
-You cannot create anything outside it:
+Anywhere you can write, osql can create. If you cannot write there, it says so:
 
 ```bash
-new file '../escape.txt'
+new file '/notes.txt'
 ```
 
 ```
-I can only look inside '/Users/you'. '../escape.txt' points outside it.
+I couldn't create '/notes.txt': permission denied
 ```
 
 ## Other messages

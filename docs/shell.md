@@ -31,6 +31,8 @@ These are not queries — they are things the shell itself does.
 
 | Command | What it does |
 |---|---|
+| `cd <path>` | move to another folder; `cd` alone goes home, `cd -` goes back |
+| `pwd` | show the folder you are in |
 | `help` | list everything you can type |
 | `history` | show your recent commands, numbered |
 | `history clear` | empty the history file |
@@ -38,6 +40,8 @@ These are not queries — they are things the shell itself does.
 | `exit` / `quit` | leave the shell |
 
 ```bash
+cd Documents
+pwd
 help
 history
 history clear
@@ -47,14 +51,13 @@ history clear
 
 | Flag | What it does |
 |---|---|
-| `--root <path>` | look inside `<path>` instead of your home folder |
+| `--dir <path>` | start in `<path>` instead of the folder you ran osql from |
 | `--no-history` | do not save this session's commands |
 | `--version` | print the version and exit |
 | `--help` | print a short usage message |
 
 ```bash
-osql --root /
-osql --root /var/log
+osql --dir /var/log
 osql --no-history
 osql --version
 ```

@@ -148,13 +148,25 @@ delete all from '/'
 ```
 
 ```
-I won't empty '/Users/you' itself. Name a folder inside it, or add a where clause.
+I won't empty '/' itself. Name a folder inside it, or add a where clause.
 ```
 
-Naming a folder is fine (`delete all from 'temp'`), and so is a filter
+The same applies to your home folder. Naming a folder is fine
+(`delete all from 'temp'`), and so is a filter
 (`delete files from '/' where type = 'tmp'`).
 
-**You cannot delete outside the root**, same as every other command.
+**It also will not delete the folder you are standing in:**
+
+```bash
+delete folder '.'
+```
+
+```
+'~/docs' is the folder you are in, so I won't delete it. Move somewhere else first with "cd ..".
+```
+
+Emptying its *contents* is allowed — `delete all from '.'` — with the usual
+preview and confirmation.
 
 <!-- nav -->
 

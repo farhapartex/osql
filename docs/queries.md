@@ -17,6 +17,7 @@ drop it.
 
 - [Four things you can ask for](#four-things-you-can-ask-for)
 - [How paths work](#how-paths-work)
+- [Moving around](#moving-around)
 - [Looking inside subfolders](#looking-inside-subfolders)
 - [Folders that are skipped](#folders-that-are-skipped)
 - [Small conveniences](#small-conveniences)
@@ -42,49 +43,53 @@ system put them. See [Installed apps](apps.md).
 
 ## How paths work
 
-`osql` starts at your home folder and never looks outside it. So all three of
-these mean the same folder:
+`osql` starts in the folder you ran it from, and paths work the way they do in
+your terminal. Nothing special to learn.
 
 ```bash
-files from 'Documents'
-files from '/Documents'
-files from '~/Documents'
+files from 'Documents'        # a folder next to you
+files from './Documents'      # the same thing
+files from 'Documents/2026'   # nested
+files from '..'               # the folder above you
+files from '/var/log'         # an exact path from the top of the disk
+files from '~/Downloads'      # under your home folder
+files from '.'                # the folder you are in
 ```
 
-A leading `/` means *your home folder*, not the top of the disk. This is the one
-surprise worth remembering.
-
-These all mean your home folder itself:
+There is nothing osql will not look at. If you can read it, osql can list it.
+If you cannot, it says so:
 
 ```bash
-files from '.'
-files from '~'
-files from '/'
+files from 'nowhere'
 ```
 
-Nested paths work as you would expect:
+```
+I couldn't find a folder at 'nowhere'. Check the path and try again.
+```
+
+## Moving around
+
+Use `cd`, and `pwd` when you lose track. The prompt shows where you are.
 
 ```bash
-files from 'Documents/2026/reports'
+cd Documents          # go in
+cd ..                 # go up
+cd /var/log           # jump anywhere
+cd ~                  # go home
+cd                    # also go home
+cd -                  # back where you just were
+pwd                   # print the full path
 ```
 
-### Going outside home
+```
+osql ~/Documents/goupp > cd internal
+osql ~/Documents/goupp/internal >
+```
 
-You cannot, by design:
+If you want to start somewhere other than where you are, say so when you launch:
 
 ```bash
-files from '../etc'
-```
-
-```
-I can only look inside '/Users/you'. '../etc' points outside it.
-```
-
-If you need somewhere else, start `osql` with a different starting point:
-
-```bash
-osql --root /
-osql --root /var/log
+osql --dir /var/log
 ```
 
 ## Looking inside subfolders
