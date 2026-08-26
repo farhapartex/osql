@@ -5,7 +5,6 @@ import (
 	"io"
 	"strconv"
 	"strings"
-	"text/tabwriter"
 
 	"github.com/farhapartex/osql/internal/engine"
 )
@@ -14,6 +13,13 @@ const (
 	ScopeOneLevel  = "one level"
 	ScopeAllLevels = "all levels"
 	DateLayout     = "2006-01-02"
+
+	indent     = "  "
+	labelWidth = 9
+	countWidth = 7
+	sizeWidth  = 11
+	nameWidth  = 46
+	ellipsis   = "…"
 )
 
 type SummaryRenderer struct{}
@@ -33,40 +39,30 @@ func (SummaryRenderer) Render(w io.Writer, s engine.Summary) error {
 	}
 
 	if !s.HasFiles() {
-		if _, err := fmt.Fprintf(w, "%s, and no files.\n", folderPhrase(s.Folders)); err != nil {
+		if _, err := fmt.Fprintf(w, "%sContains %s, and no files.\n", indent, plural(int(s.Folders), "folder")); err != nil {
 			return err
 		}
 		return writeSkipNotice(w, s)
 	}
 
-	if err := writeCounts(w, s); err != nil {
-		return err
-	}
-	if err := writeTypes(w, s); err != nil {
-		return err
-	}
-	if err := writeLargest(w, s); err != nil {
-		return err
-	}
-	if err := writeModified(w, s); err != nil {
-		return err
+	for _, section := range []func(io.Writer, engine.Summary) error{
+		writeCounts, writeTypes, writeLargest, writeModified,
+	} {
+		if err := section(w, s); err != nil {
+			return err
+		}
 	}
 	return writeSkipNotice(w, s)
 }
 
 func writeCounts(w io.Writer, s engine.Summary) error {
-	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', tabwriter.AlignRight)
-
-	fmt.Fprintf(tw, "WHAT\tCOUNT\tSIZE\t\n")
-	fmt.Fprintf(tw, "files\t%d\t%s\t\n", s.Files, FormatSize(s.TotalSize))
-	fmt.Fprintf(tw, "folders\t%d\t%s\t\n", s.Folders, Absent)
-	fmt.Fprintf(tw, "total\t%d\t%s\t\n", s.Files+s.Folders, FormatSize(s.TotalSize))
-
-	if err := tw.Flush(); err != nil {
-		return err
+	rows := [][3]string{
+		{"WHAT", "COUNT", "SIZE"},
+		{"files", strconv.FormatInt(s.Files, 10), FormatSize(s.TotalSize)},
+		{"folders", strconv.FormatInt(s.Folders, 10), Absent},
+		{"total", strconv.FormatInt(s.Files+s.Folders, 10), FormatSize(s.TotalSize)},
 	}
-	_, err := fmt.Fprintln(w)
-	return err
+	return writeTallyBlock(w, rows)
 }
 
 func writeTypes(w io.Writer, s engine.Summary) error {
@@ -74,21 +70,20 @@ func writeTypes(w io.Writer, s engine.Summary) error {
 		return nil
 	}
 
-	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', tabwriter.AlignRight)
-	fmt.Fprintf(tw, "TYPE\tCOUNT\tSIZE\t\n")
+	rows := [][3]string{{"TYPE", "COUNT", "SIZE"}}
 	for _, t := range s.Types {
 		name := t.Ext
 		if name == "" {
 			name = Absent
 		}
-		fmt.Fprintf(tw, "%s\t%d\t%s\t\n", name, t.Count, FormatSize(t.Size))
-	}
-	if err := tw.Flush(); err != nil {
-		return err
+		rows = append(rows, [3]string{name, strconv.FormatInt(t.Count, 10), FormatSize(t.Size)})
 	}
 
+	if err := writeTallyRows(w, rows); err != nil {
+		return err
+	}
 	if s.MoreTypes > 0 {
-		if _, err := fmt.Fprintf(w, "and %d more %s\n", s.MoreTypes, pluralWord(s.MoreTypes, "type")); err != nil {
+		if _, err := fmt.Fprintf(w, "%sand %d more %s\n", indent, s.MoreTypes, pluralWord(s.MoreTypes, "type")); err != nil {
 			return err
 		}
 	}
@@ -96,19 +91,41 @@ func writeTypes(w io.Writer, s engine.Summary) error {
 	return err
 }
 
+func writeTallyBlock(w io.Writer, rows [][3]string) error {
+	if err := writeTallyRows(w, rows); err != nil {
+		return err
+	}
+	_, err := fmt.Fprintln(w)
+	return err
+}
+
+func writeTallyRows(w io.Writer, rows [][3]string) error {
+	for _, row := range rows {
+		line := indent + padRight(row[0], labelWidth) + padLeft(row[1], countWidth) + padLeft(row[2], sizeWidth)
+		if _, err := fmt.Fprintln(w, strings.TrimRight(line, " ")); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func writeLargest(w io.Writer, s engine.Summary) error {
 	if len(s.Largest) == 0 {
 		return nil
 	}
 
-	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(tw, "LARGEST\tSIZE\n")
-	for _, row := range s.Largest {
-		fmt.Fprintf(tw, "%s\t%s\n", row.Name, FormatSize(row.Size))
-	}
-	if err := tw.Flush(); err != nil {
+	header := indent + padRight("LARGEST", nameWidth) + padLeft("SIZE", sizeWidth)
+	if _, err := fmt.Fprintln(w, strings.TrimRight(header, " ")); err != nil {
 		return err
 	}
+
+	for _, row := range s.Largest {
+		line := indent + padRight(truncateMiddle(row.Name, nameWidth), nameWidth) + padLeft(FormatSize(row.Size), sizeWidth)
+		if _, err := fmt.Fprintln(w, strings.TrimRight(line, " ")); err != nil {
+			return err
+		}
+	}
+
 	_, err := fmt.Fprintln(w)
 	return err
 }
@@ -117,7 +134,8 @@ func writeModified(w io.Writer, s engine.Summary) error {
 	if s.Oldest.IsZero() || s.Newest.IsZero() {
 		return nil
 	}
-	_, err := fmt.Fprintf(w, "MODIFIED  %s to %s\n", s.Oldest.Format(DateLayout), s.Newest.Format(DateLayout))
+	_, err := fmt.Fprintf(w, "%s%s%s to %s\n", indent, padRight("MODIFIED", labelWidth+1),
+		s.Oldest.Format(DateLayout), s.Newest.Format(DateLayout))
 	return err
 }
 
@@ -126,10 +144,10 @@ func writeSkipNotice(w io.Writer, s engine.Summary) error {
 		return nil
 	}
 
-	if _, err := fmt.Fprintf(w, "\nSkipped %s: %s\n", plural(len(s.Skipped), "folder"), strings.Join(s.Skipped, ", ")); err != nil {
+	if _, err := fmt.Fprintf(w, "\n%sSkipped %s: %s\n", indent, plural(len(s.Skipped), "folder"), strings.Join(s.Skipped, ", ")); err != nil {
 		return err
 	}
-	_, err := fmt.Fprintln(w, "Add \"with skipped\" to include them — it will take longer.")
+	_, err := fmt.Fprintf(w, "%sAdd \"with skipped\" to include them — it will take longer.\n", indent)
 	return err
 }
 
@@ -138,10 +156,6 @@ func scopeOf(s engine.Summary) string {
 		return ScopeAllLevels
 	}
 	return ScopeOneLevel
-}
-
-func folderPhrase(n int64) string {
-	return "Contains " + plural(int(n), "folder")
 }
 
 func plural(n int, word string) string {
