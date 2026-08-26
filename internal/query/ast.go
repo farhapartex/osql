@@ -78,4 +78,5 @@ type Statement struct {
 	IncludeSkipped bool
 	Permanent      bool
 	Single         bool
+	WithSize       bool
 }

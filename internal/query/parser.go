@@ -17,6 +17,7 @@ const (
 	KeywordPermanent = "permanently"
 	KeywordWith      = "with"
 	KeywordSkipped   = "skipped"
+	KeywordSize      = "size"
 	KeywordData      = "data"
 	LegacyVerb       = "select"
 	KeywordFrom      = "from"
@@ -187,6 +188,18 @@ func parseAppsTail(c *cursor, verb string) (*Statement, error) {
 
 	stmt := &Statement{Verb: verb, Target: TargetApps}
 
+	if c.peek().IsKeyword(KeywordWith) {
+		c.next()
+		if !c.peek().IsKeyword(KeywordSize) {
+			return nil, oerr.WithNeedsSize(c.peek().Value)
+		}
+		c.next()
+		if verb == VerbCount {
+			return nil, oerr.CountHasNoSize()
+		}
+		stmt.WithSize = true
+	}
+
 	if c.peek().IsKeyword(KeywordWhere) {
 		c.next()
 		predicates, err := parseCondition(c)
@@ -194,6 +207,10 @@ func parseAppsTail(c *cursor, verb string) (*Statement, error) {
 			return nil, err
 		}
 		stmt.Predicates = predicates
+	}
+
+	if c.peek().IsKeyword(KeywordWith) {
+		return nil, oerr.WithSizeComesFirst()
 	}
 
 	if !c.atEOF() {
