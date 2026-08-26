@@ -55,7 +55,7 @@ func TestErrorMessagesMatchSpec(t *testing.T) {
 		{
 			"unknown target",
 			oerr.UnknownTarget("documents", nil),
-			`I can list "files", "folders", or "all" — not "documents".`,
+			`I can list "files", "folders", "all", or "apps" — not "documents".`,
 		},
 		{
 			"missing from",
