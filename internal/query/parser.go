@@ -178,6 +178,22 @@ func (p stdParser) Parse(tokens []Token) (*Statement, error) {
 	return stmt, nil
 }
 
+func parseSummaryApps(c *cursor) (*Statement, error) {
+	if c.peek().IsKeyword(KeywordFrom) {
+		return nil, oerr.AppsNeedNoPath()
+	}
+	if c.peek().IsKeyword(KeywordRecursive) {
+		return nil, oerr.AppsNotRecursive()
+	}
+	if c.peek().IsKeyword(KeywordWhere) {
+		return nil, oerr.SummaryTakesNoWhere()
+	}
+	if !c.atEOF() {
+		return nil, oerr.UnexpectedInput(c.peek().Value)
+	}
+	return &Statement{Verb: VerbSummary, Target: TargetApps}, nil
+}
+
 func parseAppsTail(c *cursor, verb string) (*Statement, error) {
 	if c.peek().IsKeyword(KeywordFrom) {
 		return nil, oerr.AppsNeedNoPath()
@@ -310,6 +326,10 @@ func parsePermanently(c *cursor, stmt *Statement) error {
 func parseSummary(c *cursor) (*Statement, error) {
 	if c.atEOF() {
 		return nil, oerr.MissingFrom()
+	}
+	if c.peek().IsKeyword(VerbApps) {
+		c.next()
+		return parseSummaryApps(c)
 	}
 	if !c.peek().IsKeyword(KeywordFrom) {
 		return nil, oerr.MissingFrom()
