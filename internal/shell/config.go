@@ -17,6 +17,7 @@ type Config struct {
 	Engine        *engine.Registry
 	Renderer      output.Renderer
 	CountRenderer output.Renderer
+	Summary       output.SummaryRenderer
 	Store         state.Store
 	Out           io.Writer
 	Err           io.Writer

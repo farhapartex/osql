@@ -111,6 +111,14 @@ func (s *Shell) runQuery(line string) error {
 
 	ctx := context.Background()
 
+	if summarizer, ok := executor.(engine.Summarizer); ok {
+		summary, err := summarizer.Summarize(ctx, stmt)
+		if err != nil {
+			return err
+		}
+		return s.cfg.Summary.Render(s.cfg.Out, summary)
+	}
+
 	if content, ok := executor.(engine.ContentExecutor); ok {
 		return content.WriteContent(ctx, stmt, s.cfg.Out)
 	}
