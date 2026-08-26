@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -44,6 +47,35 @@ func (s fakeSource) Apps(context.Context) ([]engine.App, error) {
 	return s.apps, nil
 }
 
+type fakeSizer struct {
+	mu     sync.Mutex
+	sized  []string
+	err    error
+	unable map[string]bool
+}
+
+func (s *fakeSizer) Sizes(ctx context.Context, list []engine.App) error {
+	if s.err != nil {
+		return s.err
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
+	for i := range list {
+		s.mu.Lock()
+		s.sized = append(s.sized, list[i].Name)
+		s.mu.Unlock()
+
+		if s.unable[list[i].Name] {
+			continue
+		}
+		list[i].Size = int64(len(list[i].Name)) * 1000
+		list[i].SizeKnown = true
+	}
+	return nil
+}
+
 func mustLex(t *testing.T, input string) []query.Token {
 	t.Helper()
 
@@ -70,9 +102,15 @@ func sampleApps() []engine.App {
 
 func appsExecutorFor(t *testing.T, catalog engine.Catalog) (*engine.AppsExecutor, query.Parser) {
 	t.Helper()
+	executor, parser, _ := appsExecutorWithSizer(t, catalog, &fakeSizer{})
+	return executor, parser
+}
+
+func appsExecutorWithSizer(t *testing.T, catalog engine.Catalog, sizer *fakeSizer) (*engine.AppsExecutor, query.Parser, *fakeSizer) {
+	t.Helper()
 
 	compiler := engine.NewCompiler(engine.DefaultFields(nil), engine.DefaultOperators())
-	return engine.NewAppsExecutor(catalog, compiler), query.NewParser(compiler)
+	return engine.NewAppsExecutor(catalog, compiler, sizer), query.NewParser(compiler), sizer
 }
 
 func listApps(t *testing.T, catalog engine.Catalog, input string) engine.AppReport {
@@ -89,6 +127,17 @@ func listApps(t *testing.T, catalog engine.Catalog, input string) engine.AppRepo
 		t.Fatalf("ListApps(%q) error = %v", input, err)
 	}
 	return report
+}
+
+func listAppsSized(t *testing.T, catalog engine.Catalog, sizer *fakeSizer, input string) (engine.AppReport, error) {
+	t.Helper()
+
+	executor, parser, _ := appsExecutorWithSizer(t, catalog, sizer)
+	stmt, err := parser.Parse(mustLex(t, input))
+	if err != nil {
+		return engine.AppReport{}, err
+	}
+	return executor.ListApps(context.Background(), stmt)
 }
 
 func appNames(report engine.AppReport) []string {
@@ -253,7 +302,7 @@ func TestAppsParseErrors(t *testing.T) {
 
 			stmt, err := parser.Parse(mustLex(t, tt.input))
 			if err == nil {
-				executor := engine.NewAppsExecutor(&fakeCatalog{}, compiler)
+				executor := engine.NewAppsExecutor(&fakeCatalog{}, compiler, &fakeSizer{})
 				_, err = executor.ListApps(context.Background(), stmt)
 			}
 			if err == nil {
@@ -394,6 +443,279 @@ func TestNormalizeName(t *testing.T) {
 	for _, tt := range tests {
 		if got := apps.NormalizeName(tt.in); got != tt.want {
 			t.Errorf("NormalizeName(%q) = %q, want %q", tt.in, got, tt.want)
+		}
+	}
+}
+
+func TestAppsDoesNotMeasureSizeUnlessAsked(t *testing.T) {
+	sizer := &fakeSizer{}
+	report, err := listAppsSized(t, &fakeCatalog{apps: sampleApps()}, sizer, "apps")
+	if err != nil {
+		t.Fatalf("ListApps error = %v", err)
+	}
+
+	if len(sizer.sized) != 0 {
+		t.Errorf("measured %v without \"with size\" — sizing is the expensive path", sizer.sized)
+	}
+	if report.Sized {
+		t.Error("Sized = true without \"with size\"")
+	}
+	for _, app := range report.Apps {
+		if app.SizeKnown {
+			t.Errorf("%s reported a size that was never asked for", app.Name)
+		}
+	}
+}
+
+func TestAppsWithSizeMeasuresAndTotals(t *testing.T) {
+	sizer := &fakeSizer{}
+	report, err := listAppsSized(t, &fakeCatalog{apps: sampleApps()}, sizer, "apps with size")
+	if err != nil {
+		t.Fatalf("ListApps error = %v", err)
+	}
+
+	if !report.Sized {
+		t.Fatal("Sized = false after \"with size\"")
+	}
+	if len(sizer.sized) != 3 {
+		t.Errorf("measured %v, want the 3 listed apps", sizer.sized)
+	}
+
+	var want int64
+	for _, app := range report.Apps {
+		if !app.SizeKnown {
+			t.Errorf("%s has no size", app.Name)
+		}
+		want += app.Size
+	}
+	if report.TotalSize != want {
+		t.Errorf("TotalSize = %d, want %d", report.TotalSize, want)
+	}
+}
+
+func TestAppsWithSizeMeasuresOnlyWhatSurvivedTheFilter(t *testing.T) {
+	sizer := &fakeSizer{}
+	if _, err := listAppsSized(t, &fakeCatalog{apps: sampleApps()}, sizer, "apps with size where name_like = '%Chrome%'"); err != nil {
+		t.Fatalf("ListApps error = %v", err)
+	}
+
+	if len(sizer.sized) != 1 || sizer.sized[0] != "Google Chrome" {
+		t.Errorf("measured %v, want only Google Chrome — filtering must come before sizing", sizer.sized)
+	}
+}
+
+func TestAppsWithSizeSkipsHiddenTools(t *testing.T) {
+	sizer := &fakeSizer{}
+	if _, err := listAppsSized(t, &fakeCatalog{apps: sampleApps()}, sizer, "apps with size"); err != nil {
+		t.Fatalf("ListApps error = %v", err)
+	}
+
+	for _, name := range sizer.sized {
+		if name == "ripgrep" || name == "jq" {
+			t.Errorf("measured hidden tool %q", name)
+		}
+	}
+}
+
+func TestAppsTotalIgnoresUnmeasurableApps(t *testing.T) {
+	sizer := &fakeSizer{unable: map[string]bool{"Safari": true}}
+	report, err := listAppsSized(t, &fakeCatalog{apps: sampleApps()}, sizer, "apps with size")
+	if err != nil {
+		t.Fatalf("ListApps error = %v", err)
+	}
+
+	var want int64
+	for _, app := range report.Apps {
+		if app.Name == "Safari" {
+			if app.SizeKnown {
+				t.Error("Safari should be unmeasurable in this test")
+			}
+			continue
+		}
+		want += app.Size
+	}
+	if report.TotalSize != want {
+		t.Errorf("TotalSize = %d, want %d — an unreadable app must not count as zero-and-known", report.TotalSize, want)
+	}
+}
+
+func TestAppsSizerErrorReachesCaller(t *testing.T) {
+	sizer := &fakeSizer{err: errors.New("permission denied")}
+	if _, err := listAppsSized(t, &fakeCatalog{apps: sampleApps()}, sizer, "apps with size"); err == nil {
+		t.Fatal("a failing sizer must not be swallowed")
+	}
+}
+
+func TestWithSizeParseErrors(t *testing.T) {
+	tests := []struct {
+		input string
+		kind  oerr.Kind
+	}{
+		{"apps with", oerr.KindWithNeedsSize},
+		{"apps with skipped", oerr.KindWithNeedsSize},
+		{"apps with sizes", oerr.KindWithNeedsSize},
+		{"apps where source = 'macos' with size", oerr.KindWithSizeComesFirst},
+		{"count(apps) with size", oerr.KindCountHasNoSize},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			compiler := engine.NewCompiler(engine.DefaultFields(nil), engine.DefaultOperators())
+			_, err := query.NewParser(compiler).Parse(mustLex(t, tt.input))
+			if err == nil {
+				t.Fatalf("%s was accepted", tt.input)
+			}
+			if !oerr.Is(err, tt.kind) {
+				t.Errorf("%s gave %v, want kind %v", tt.input, err, tt.kind)
+			}
+		})
+	}
+}
+
+func TestWithSizeParsesBeforeWhere(t *testing.T) {
+	compiler := engine.NewCompiler(engine.DefaultFields(nil), engine.DefaultOperators())
+	stmt, err := query.NewParser(compiler).Parse(mustLex(t, "apps with size where source = 'macos'"))
+	if err != nil {
+		t.Fatalf("Parse error = %v", err)
+	}
+
+	if !stmt.WithSize {
+		t.Error("WithSize = false")
+	}
+	if len(stmt.Predicates) != 1 {
+		t.Errorf("got %d predicates, want 1", len(stmt.Predicates))
+	}
+}
+
+func TestSizerMeasuresRealDirectories(t *testing.T) {
+	root := t.TempDir()
+	bundle := filepath.Join(root, "Thing.app")
+	nested := filepath.Join(bundle, "Contents", "MacOS")
+
+	if err := os.MkdirAll(nested, 0o755); err != nil {
+		t.Fatalf("MkdirAll error = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(bundle, "top.txt"), []byte("12345"), 0o644); err != nil {
+		t.Fatalf("WriteFile error = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(nested, "deep.bin"), make([]byte, 100), 0o644); err != nil {
+		t.Fatalf("WriteFile error = %v", err)
+	}
+
+	list := []engine.App{
+		{Name: "Thing", Path: bundle},
+		{Name: "Missing", Path: filepath.Join(root, "Nope.app")},
+		{Name: "Unpathed"},
+	}
+
+	if err := apps.NewSizer().Sizes(context.Background(), list); err != nil {
+		t.Fatalf("Sizes error = %v", err)
+	}
+
+	if !list[0].SizeKnown || list[0].Size != 105 {
+		t.Errorf("Thing size = %d (known %v), want 105 summed recursively", list[0].Size, list[0].SizeKnown)
+	}
+	if list[1].SizeKnown {
+		t.Error("a missing path must report an unknown size, not zero")
+	}
+	if list[2].SizeKnown {
+		t.Error("an app with no path must report an unknown size")
+	}
+}
+
+func TestSizerIgnoresSymlinksRatherThanFollowingThem(t *testing.T) {
+	root := t.TempDir()
+	bundle := filepath.Join(root, "Linked.app")
+	if err := os.MkdirAll(bundle, 0o755); err != nil {
+		t.Fatalf("MkdirAll error = %v", err)
+	}
+
+	outside := filepath.Join(root, "huge.bin")
+	if err := os.WriteFile(outside, make([]byte, 5000), 0o644); err != nil {
+		t.Fatalf("WriteFile error = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(bundle, "real.txt"), []byte("abc"), 0o644); err != nil {
+		t.Fatalf("WriteFile error = %v", err)
+	}
+	if err := os.Symlink(outside, filepath.Join(bundle, "link.bin")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+
+	list := []engine.App{{Name: "Linked", Path: bundle}}
+	if err := apps.NewSizer().Sizes(context.Background(), list); err != nil {
+		t.Fatalf("Sizes error = %v", err)
+	}
+
+	if list[0].Size != 3 {
+		t.Errorf("size = %d, want 3 — a symlink must not pull in its target's bytes", list[0].Size)
+	}
+}
+
+func TestSizerHonoursCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	list := []engine.App{{Name: "Thing", Path: t.TempDir()}}
+	if err := apps.NewSizer().Sizes(ctx, list); err == nil {
+		t.Error("Sizes ignored a cancelled context")
+	}
+}
+
+func TestSizerHandlesEmptyList(t *testing.T) {
+	if err := apps.NewSizer().Sizes(context.Background(), nil); err != nil {
+		t.Errorf("Sizes(nil) error = %v", err)
+	}
+}
+
+func TestAppsRendererShowsSizeColumnOnlyWhenSized(t *testing.T) {
+	sized := engine.AppReport{
+		Apps:      []engine.App{{Name: "Safari", Source: engine.SourceMacOS, Size: 1536, SizeKnown: true}},
+		Sized:     true,
+		TotalSize: 1536,
+	}
+	var withSize bytes.Buffer
+	if err := output.NewApps().Render(&withSize, sized); err != nil {
+		t.Fatalf("Render error = %v", err)
+	}
+	if !strings.Contains(withSize.String(), output.HeaderSize) {
+		t.Errorf("SIZE column missing:\n%s", withSize.String())
+	}
+	if !strings.Contains(withSize.String(), "on disk") {
+		t.Errorf("total missing from footer:\n%s", withSize.String())
+	}
+
+	plain := engine.AppReport{Apps: []engine.App{{Name: "Safari", Source: engine.SourceMacOS}}}
+	var without bytes.Buffer
+	if err := output.NewApps().Render(&without, plain); err != nil {
+		t.Fatalf("Render error = %v", err)
+	}
+	if strings.Contains(without.String(), output.HeaderSize) {
+		t.Errorf("SIZE column shown when nothing was measured:\n%s", without.String())
+	}
+	if strings.Contains(without.String(), "on disk") {
+		t.Errorf("footer claims a total that was never measured:\n%s", without.String())
+	}
+}
+
+func TestAppsRendererShowsDashForUnmeasuredApp(t *testing.T) {
+	report := engine.AppReport{
+		Apps: []engine.App{
+			{Name: "Known", Source: engine.SourceSystem, Size: 2048, SizeKnown: true},
+			{Name: "Unknown", Source: engine.SourceSystem},
+		},
+		Sized:     true,
+		TotalSize: 2048,
+	}
+
+	var buf bytes.Buffer
+	if err := output.NewApps().Render(&buf, report); err != nil {
+		t.Fatalf("Render error = %v", err)
+	}
+
+	lines := strings.Split(buf.String(), "\n")
+	for _, line := range lines {
+		if strings.HasPrefix(line, "Unknown") && !strings.Contains(line, output.Absent) {
+			t.Errorf("unmeasured app must show %q: %q", output.Absent, line)
 		}
 	}
 }
