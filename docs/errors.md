@@ -1,4 +1,4 @@
-<img src="../osql_dualtone.png" alt="osql" width="140" align="right">
+<img src="../osql_chevron.png" alt="osql" width="140" align="right">
 
 # Error messages
 
@@ -207,6 +207,39 @@ You wrote `with` on its own. The only thing that follows it is `skipped`.
 **`I only know "with skipped", not "with everything".`**
 
 Same idea — `with skipped` is the one option.
+
+## Deleting
+
+**`I won't empty '/Users/you' itself. Name a folder inside it, or add a where clause.`**
+
+Deleting everything in your home folder is refused. Name a folder inside it, or
+narrow it with `where`.
+
+---
+
+**`'reports' is a folder, not a file. Try: delete folder 'reports'`**
+
+You used the wrong one of the pair. The message gives you the right command.
+
+---
+
+**`I can't delete "thing". Try "delete file", "delete folder", or "delete files from".`**
+
+`delete` takes `file`, `folder`, `files`, `folders` or `all`.
+
+---
+
+**`'x' is on another disk, so it can't go to the trash. Add "permanently" to delete it for good.`**
+
+The trash lives in your home folder, and files cannot be moved across disks. Use
+`permanently` if you are sure.
+
+---
+
+**`I couldn't delete 'x': permission denied`**
+
+The file needs admin rights. osql cannot ask for them — try running it with
+`sudo`.
 
 ## Outcomes, not errors
 

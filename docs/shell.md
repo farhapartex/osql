@@ -1,4 +1,4 @@
-<img src="../osql_dualtone.png" alt="osql" width="140" align="right">
+<img src="../osql_chevron.png" alt="osql" width="140" align="right">
 
 # Shell and flags
 
@@ -73,8 +73,11 @@ on the list.
 **Ctrl+C leaves the shell** instead of cancelling the line you are typing. Same
 reason.
 
-**No deleting.** `new` can make files and folders, but nothing can remove or
-overwrite them. `new` refuses rather than replace an existing file.
+**Nothing is overwritten.** `new` refuses rather than replace an existing file,
+and `delete` always asks before removing anything. See [deleting](deleting.md).
+
+**osql cannot ask for admin rights.** If a file needs `sudo`, osql reports that
+it could not delete it rather than prompting for a password.
 
 **No paging.** `open` on a huge file prints all of it. There is no `less`-style
 pager yet.

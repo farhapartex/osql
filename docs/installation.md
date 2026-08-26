@@ -1,4 +1,4 @@
-<img src="../osql_dualtone.png" alt="osql" width="140" align="right">
+<img src="../osql_chevron.png" alt="osql" width="140" align="right">
 
 # Installation
 

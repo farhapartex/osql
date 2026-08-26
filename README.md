@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="osql_dualtone.png" alt="osql" width="380">
+  <img src="osql_chevron.png" alt="osql" width="380">
 </p>
 
 Ask your filesystem questions in plain sentences instead of remembering flags.
@@ -48,6 +48,7 @@ Press `Ctrl+D` or type `exit` to leave.
 | [Summary](docs/summary.md) | A folder at a glance: sizes, types, biggest files |
 | [Opening files](docs/opening.md) | Printing what is inside a text file |
 | [Creating](docs/creating.md) | Making new files and folders |
+| [Deleting](docs/deleting.md) | Removing files and folders, safely |
 | [Output](docs/output.md) | Reading the table and the size column |
 | [Shell and flags](docs/shell.md) | Built-in commands and command-line options |
 | [Error messages](docs/errors.md) | What each message means and how to fix it |
@@ -56,8 +57,8 @@ Press `Ctrl+D` or type `exit` to leave.
 
 ## Status
 
-Early days, and honest about it. Listing, filtering, counting, reading, and
-creating all work. Deleting does not exist yet, and the shell has no arrow-key
-history — see [known limits](docs/shell.md#known-limits).
+Early days, and honest about it. Listing, filtering, counting, summarising,
+reading, creating, and deleting all work. The shell has no arrow-key history yet
+— see [known limits](docs/shell.md#known-limits).
 
 macOS and Linux only.

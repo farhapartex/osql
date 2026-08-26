@@ -59,6 +59,8 @@ queries:
   new file '<path>' data='hello'            make a file, optionally with content
   new folder '<path>'                       make a folder
   summary from '<path>' [recursive]         counts, sizes and types at a glance
+  delete file '<path>'                      move one file to the trash
+  delete files from '<path>' where ...      move matching files to the trash
 
 Every path is resolved inside the root, so 'Documents', '/Documents' and
 '~/Documents' all mean the same folder.`

@@ -42,12 +42,13 @@ func run(args []string) error {
 		return nil
 	}
 
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+
 	queryRoot := opts.Root
 	if queryRoot == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return err
-		}
 		queryRoot = home
 	}
 
@@ -89,15 +90,17 @@ func run(args []string) error {
 	opener := engine.NewOpenExecutor(fsys, resolver)
 	maker := engine.NewNewExecutor(fsys, resolver)
 	summarizer := engine.NewSummaryExecutor(fsys, resolver, skip)
+	remover := engine.NewDeleteExecutor(fsys, resolver, compiler, vfs.NewTrash(home, nil))
 
 	app := shell.New(shell.Config{
 		Reader:        reader.NewBasic(os.Stdin, os.Stdout, history),
 		Lexer:         query.NewLexer(),
 		Parser:        query.NewParser(compiler),
-		Engine:        engine.NewRegistry(selector, counter, opener, maker, summarizer),
+		Engine:        engine.NewRegistry(selector, counter, opener, maker, summarizer, remover),
 		Renderer:      output.NewTable(),
 		CountRenderer: output.NewCount(),
 		Summary:       output.NewSummary(),
+		Delete:        output.NewDelete(),
 		Store:         store,
 		Out:           os.Stdout,
 		Err:           os.Stderr,

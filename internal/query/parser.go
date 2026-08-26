@@ -12,6 +12,8 @@ const (
 	VerbOpen         = "open"
 	VerbNew          = "new"
 	VerbSummary      = "summary"
+	VerbDelete       = "delete"
+	KeywordPermanent = "permanently"
 	KeywordWith      = "with"
 	KeywordSkipped   = "skipped"
 	KeywordData      = "data"
@@ -98,6 +100,11 @@ func (p stdParser) Parse(tokens []Token) (*Statement, error) {
 		return parseSummary(c)
 	}
 
+	if c.peek().IsKeyword(VerbDelete) {
+		c.next()
+		return parseDelete(c)
+	}
+
 	verb := VerbSelect
 	if c.peek().IsKeyword(KeywordCount) && c.peekAt(1).Kind == TokenLParen {
 		verb = VerbCount
@@ -169,6 +176,79 @@ func parseOpen(c *cursor) (*Statement, error) {
 		return nil, oerr.UnexpectedInput(c.peek().Value)
 	}
 	return &Statement{Verb: VerbOpen, Path: path}, nil
+}
+
+func parseDelete(c *cursor) (*Statement, error) {
+	word := c.peek()
+	if word.Kind != TokenIdent {
+		return nil, oerr.MissingDeleteTarget("")
+	}
+
+	if kind, ok := ParseNewKind(strings.ToLower(word.Value)); ok {
+		c.next()
+		return parseDeleteSingle(c, kind)
+	}
+
+	target, ok := ParseTarget(strings.ToLower(word.Value))
+	if !ok {
+		return nil, oerr.MissingDeleteTarget(word.Value)
+	}
+	c.next()
+	return parseDeleteBulk(c, target)
+}
+
+func parseDeleteSingle(c *cursor, kind NewKind) (*Statement, error) {
+	path, err := parsePath(c)
+	if err != nil {
+		return nil, oerr.MissingDeletePath(kind.String())
+	}
+
+	stmt := &Statement{Verb: VerbDelete, Kind: kind, Path: path, Single: true, Target: TargetAll}
+	if err := parsePermanently(c, stmt); err != nil {
+		return nil, err
+	}
+	return stmt, nil
+}
+
+func parseDeleteBulk(c *cursor, target Target) (*Statement, error) {
+	if !c.peek().IsKeyword(KeywordFrom) {
+		return nil, oerr.MissingFrom()
+	}
+	c.next()
+
+	path, err := parsePath(c)
+	if err != nil {
+		return nil, err
+	}
+
+	stmt := &Statement{Verb: VerbDelete, Target: target, Path: path}
+
+	if c.peek().IsKeyword(KeywordRecursive) {
+		c.next()
+		stmt.Recursive = true
+	}
+	if c.peek().IsKeyword(KeywordWhere) {
+		c.next()
+		stmt.Predicates, err = parseCondition(c)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if err := parsePermanently(c, stmt); err != nil {
+		return nil, err
+	}
+	return stmt, nil
+}
+
+func parsePermanently(c *cursor, stmt *Statement) error {
+	if c.peek().IsKeyword(KeywordPermanent) {
+		c.next()
+		stmt.Permanent = true
+	}
+	if !c.atEOF() {
+		return oerr.UnexpectedInput(c.peek().Value)
+	}
+	return nil
 }
 
 func parseSummary(c *cursor) (*Statement, error) {
