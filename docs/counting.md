@@ -13,12 +13,13 @@ WHAT   COUNT
 files  52
 ```
 
-## The three forms
+## The forms
 
 ```bash
 count(files) from 'Documents'
 count(folders) from 'Documents'
 count(all) from 'Documents'
+count(apps)
 ```
 
 `count(all)` gives you **two rows**, because files and folders are different
@@ -29,6 +30,9 @@ WHAT     COUNT
 files    52
 folders  29
 ```
+
+`count(apps)` counts what is installed instead of what is in a folder, so it
+takes no path. See [Installed apps](apps.md).
 
 ## Same filters as a listing
 
@@ -67,7 +71,8 @@ WHAT   COUNT
 files  0
 ```
 
-## Next
+<!-- nav -->
 
-- [Filtering](filtering.md) — the full list of things you can filter on
-- [Output](output.md) — reading the normal table
+---
+
+[← Filtering](filtering.md) · [All pages](README.md) · [Summary →](summary.md)

@@ -11,7 +11,18 @@ files from 'Documents'
 There is no verb like `select` in front. If you type one, `osql` will tell you to
 drop it.
 
-## Three things you can ask for
+---
+
+**On this page**
+
+- [Four things you can ask for](#four-things-you-can-ask-for)
+- [How paths work](#how-paths-work)
+- [Looking inside subfolders](#looking-inside-subfolders)
+- [Folders that are skipped](#folders-that-are-skipped)
+- [Small conveniences](#small-conveniences)
+- [Special characters in quotes](#special-characters-in-quotes)
+
+## Four things you can ask for
 
 ```bash
 files from 'Documents'      # only files
@@ -19,11 +30,15 @@ folders from 'Documents'    # only folders
 all from 'Documents'        # both
 ```
 
+```bash
+apps                        # installed apps, not files
+```
+
 Always use the plural. `file` and `folder` are not accepted — `osql` will
 correct you.
 
-There is a fourth thing you can ask for, and it is the one that takes no folder:
-`apps` lists what is installed on your machine. See [Installed apps](apps.md).
+`apps` is the odd one out: it takes no folder, because apps live wherever your
+system put them. See [Installed apps](apps.md).
 
 ## How paths work
 
@@ -150,8 +165,8 @@ files from 'Ali\'s Documents'
 Anything else after a backslash is an error, which stops a typo from quietly
 becoming part of a name.
 
-## Next
+<!-- nav -->
 
-- [Filtering](filtering.md) — narrow results with `where`
-- [Counting](counting.md) — get a number instead of a list
-- [Installed apps](apps.md) — list the apps on your machine
+---
+
+[← Installation](installation.md) · [All pages](README.md) · [Filtering →](filtering.md)

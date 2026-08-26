@@ -8,7 +8,20 @@ Add `where` to narrow down what you get back.
 files from 'Documents' where type = 'txt'
 ```
 
-## The four things you can filter on
+---
+
+**On this page**
+
+- [What you can filter on](#what-you-can-filter-on)
+- [By name](#by-name)
+- [By pattern](#by-pattern)
+- [By type](#by-type)
+- [By how full a folder is](#by-how-full-a-folder-is)
+- [Combining filters](#combining-filters)
+- [Filtering while going deep](#filtering-while-going-deep)
+- [Spacing](#spacing)
+
+## What you can filter on
 
 | Field | Looks at | Works with |
 |---|---|---|
@@ -105,7 +118,8 @@ Spaces around `=` are optional:
 files from 'Documents' where type='txt'
 ```
 
-## Next
+<!-- nav -->
 
-- [Counting](counting.md) — the same filters, but you get a number
-- [Error messages](errors.md) — if a filter is rejected
+---
+
+[← Queries](queries.md) · [All pages](README.md) · [Counting →](counting.md)
