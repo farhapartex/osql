@@ -2,6 +2,21 @@
 
 # Shell and flags
 
+The shell is where you type queries. This page covers everything around
+them: the commands that are not queries, the keys that edit your line, and the
+flags you can start with.
+
+---
+
+**On this page**
+
+- [Starting and leaving](#starting-and-leaving)
+- [Built-in commands](#built-in-commands)
+- [Command-line flags](#command-line-flags)
+- [Setting up ahead of time](#setting-up-ahead-of-time)
+- [Editing the line you are typing](#editing-the-line-you-are-typing)
+- [Known limits](#known-limits)
+
 ## Starting and leaving
 
 ```bash
@@ -109,7 +124,8 @@ and `delete` always asks before removing anything. See [deleting](deleting.md).
 **osql cannot ask for admin rights.** If a file needs `sudo`, osql reports that
 it could not delete it rather than prompting for a password.
 
-## Next
+<!-- nav -->
 
-- [Your files](files.md) — what gets saved in `~/.osql`
-- [Error messages](errors.md) — what a message means
+---
+
+[← Output](output.md) · [All pages](README.md) · [Error messages →](errors.md)

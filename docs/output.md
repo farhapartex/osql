@@ -88,6 +88,8 @@ And if the folder itself is empty:
 
 Neither one is an error.
 
-## Next
+<!-- nav -->
 
-- [Counting](counting.md) — when you want the number, not the rows
+---
+
+[← Deleting](deleting.md) · [All pages](README.md) · [Shell and flags →](shell.md)

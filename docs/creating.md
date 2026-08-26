@@ -16,6 +16,17 @@ Created 'notes.txt'
 Note the **singular** word here. You list many things (`files from …`) but you
 make one thing at a time (`new file …`).
 
+---
+
+**On this page**
+
+- [Putting text in the file](#putting-text-in-the-file)
+- [Missing folders are created for you](#missing-folders-are-created-for-you)
+- [Nothing is ever overwritten](#nothing-is-ever-overwritten)
+- [Paths work the same as everywhere else](#paths-work-the-same-as-everywhere-else)
+- [Other messages](#other-messages)
+- [What gets set](#what-gets-set)
+
 ## Putting text in the file
 
 Add `data=` to create the file with something already in it:
@@ -181,7 +192,8 @@ I need a path after "new file" — for example: new file 'notes.txt'
 New files are readable and writable by you, readable by others (`0644`). New
 folders are `0755`. These are the same defaults your shell uses.
 
-## Next
+<!-- nav -->
 
-- [Opening files](opening.md) — read a file back
-- [Queries](queries.md) — see what you made
+---
+
+[← Opening files](opening.md) · [All pages](README.md) · [Deleting →](deleting.md)

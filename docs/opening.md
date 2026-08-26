@@ -13,6 +13,17 @@ first line
 second line
 ```
 
+---
+
+**On this page**
+
+- [Paths work the same way](#paths-work-the-same-way)
+- [It only takes a path](#it-only-takes-a-path)
+- [Folders are refused](#folders-are-refused)
+- [Binary files are refused](#binary-files-are-refused)
+- [Other messages](#other-messages)
+- [Small details](#small-details)
+
 ## Paths work the same way
 
 Same rules as every other query — everything is inside your home folder, and
@@ -113,7 +124,8 @@ I don't have permission to read 'locked.txt'.
   slow your machine down. It will still fill your screen — `osql` has no paging
   yet.
 
-## Next
+<!-- nav -->
 
-- [Queries](queries.md) — listing folders
-- [Error messages](errors.md) — the full list of messages
+---
+
+[← Installed apps](apps.md) · [All pages](README.md) · [Creating files and folders →](creating.md)

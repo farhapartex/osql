@@ -21,6 +21,18 @@ delete>
 
 Type anything other than `yes` — or press Ctrl+D — and nothing happens.
 
+---
+
+**On this page**
+
+- [Deleting one thing](#deleting-one-thing)
+- [Deleting many things](#deleting-many-things)
+- [Things go to the trash](#things-go-to-the-trash)
+- [Folders show their weight](#folders-show-their-weight)
+- [Nothing here is skipped](#nothing-here-is-skipped)
+- [When some files will not budge](#when-some-files-will-not-budge)
+- [Guards](#guards)
+
 ## Deleting one thing
 
 Mirrors [creating](creating.md), so the pair reads the same way:
@@ -144,8 +156,8 @@ Naming a folder is fine (`delete all from 'temp'`), and so is a filter
 
 **You cannot delete outside the root**, same as every other command.
 
-## Next
+<!-- nav -->
 
-- [Creating](creating.md) — the other half of the pair
-- [Queries](queries.md) — previewing a delete
-- [Error messages](errors.md) — the full list
+---
+
+[← Creating files and folders](creating.md) · [All pages](README.md) · [Output →](output.md)

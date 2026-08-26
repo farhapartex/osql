@@ -96,3 +96,9 @@ With `--no-history`, the file is not even created.
 
 `history.txt` is stricter because your queries mention paths, and those can be
 telling on a shared machine.
+
+<!-- nav -->
+
+---
+
+[← Error messages](errors.md) · [All pages](README.md) · [Development →](development.md)

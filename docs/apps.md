@@ -19,6 +19,20 @@ Safari         26.0            macos     2026-06-13 10:22
 81 apps
 ```
 
+---
+
+**On this page**
+
+- [There is no path](#there-is-no-path)
+- [What SOURCE means](#what-source-means)
+- [Command-line tools are hidden by default](#command-line-tools-are-hidden-by-default)
+- [How much disk each app uses](#how-much-disk-each-app-uses)
+- [Everything at a glance](#everything-at-a-glance)
+- [Filtering](#filtering)
+- [Counting](#counting)
+- [Why a version is sometimes missing](#why-a-version-is-sometimes-missing)
+- [osql will not uninstall](#osql-will-not-uninstall)
+
 ## There is no path
 
 Every other query takes a folder. `apps` does not, because apps are not in one
@@ -248,3 +262,9 @@ background helpers, which I can't do safely. Use your system's own uninstaller.
 
 Removing the app folder alone leaves settings and background helpers behind, so
 osql does not pretend it can do the job.
+
+<!-- nav -->
+
+---
+
+[← Summary](summary.md) · [All pages](README.md) · [Opening files →](opening.md)

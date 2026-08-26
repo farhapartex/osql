@@ -2,6 +2,9 @@
 
 # Installation
 
+Getting `osql` onto your machine takes one command. Here is that
+command, and how to run it from any folder afterwards.
+
 ## What you need
 
 - Go 1.26 or newer
@@ -65,3 +68,9 @@ make e2e      # run the real program against a test folder
 make vet      # check for common mistakes
 make clean    # delete bin/
 ```
+
+<!-- nav -->
+
+---
+
+[All pages](README.md) · [Queries →](queries.md)

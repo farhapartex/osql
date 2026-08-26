@@ -2,6 +2,9 @@
 
 # Development
 
+How to build it, how to test it, and how to find your way around
+the code.
+
 ## Commands
 
 ```bash
@@ -100,3 +103,9 @@ make e2e
 ```
 
 Report what actually happened, including the failures.
+
+<!-- nav -->
+
+---
+
+[← Your files](files.md) · [All pages](README.md)

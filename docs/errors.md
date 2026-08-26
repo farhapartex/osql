@@ -5,6 +5,21 @@
 Every message tries to say two things: what went wrong, and what to do about it.
 This page lists them all with a fix.
 
+---
+
+**On this page**
+
+- [Paths](#paths)
+- [Getting the query shape right](#getting-the-query-shape-right)
+- [Filters](#filters)
+- [Typing mistakes](#typing-mistakes)
+- [Creating](#creating)
+- [Summary](#summary)
+- [Apps](#apps)
+- [Deleting](#deleting)
+- [Outcomes, not errors](#outcomes-not-errors)
+- [Known gap](#known-gap)
+
 ## Paths
 
 **`I couldn't find a folder at 'Documnets'. Check the path and try again.`**
@@ -310,9 +325,9 @@ These two are normal answers, not problems:
 
 **`'Documents' is empty.`** — the folder is real and has nothing in it.
 
-## One rough edge
+## Known gap
 
-A typo in a *built-in command* gets the query message rather than a suggestion:
+A typo in a *built-in command* gets the query message instead of a suggestion:
 
 ```bash
 helpp
@@ -322,4 +337,10 @@ helpp
 I can list "files", "folders", "all", or "apps" — not "helpp".
 ```
 
-It should suggest `help`. Type `help` to see the list of commands.
+It should offer `help`. Until it does, type `help` to see the list of commands.
+
+<!-- nav -->
+
+---
+
+[← Shell and flags](shell.md) · [All pages](README.md) · [Your files →](files.md)

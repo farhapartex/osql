@@ -30,6 +30,18 @@ Downloads — one level
   MODIFIED  2024-03-11 to 2026-08-25
 ```
 
+---
+
+**On this page**
+
+- [One level or all levels](#one-level-or-all-levels)
+- [Reading it](#reading-it)
+- [Installed apps](#installed-apps)
+- [Folders that get skipped](#folders-that-get-skipped)
+- [Short answers](#short-answers)
+- [Why it can be slow](#why-it-can-be-slow)
+- [Not supported yet](#not-supported-yet)
+
 ## One level or all levels
 
 By default `summary` looks at the folder itself and nothing deeper. The heading
@@ -135,7 +147,8 @@ part of one. Use [counting](counting.md) if you want a filtered number:
 count(files) from 'Downloads' where type = 'pdf'
 ```
 
-## Next
+<!-- nav -->
 
-- [Counting](counting.md) — a single number, with filters
-- [Queries](queries.md) — listing what is actually there
+---
+
+[← Counting](counting.md) · [All pages](README.md) · [Installed apps →](apps.md)
