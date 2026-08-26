@@ -18,6 +18,7 @@ type Config struct {
 	Renderer      output.Renderer
 	CountRenderer output.Renderer
 	Summary       output.SummaryRenderer
+	Delete        output.DeleteRenderer
 	Store         state.Store
 	Out           io.Writer
 	Err           io.Writer

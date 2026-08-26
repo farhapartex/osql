@@ -111,6 +111,10 @@ func (s *Shell) runQuery(line string) error {
 
 	ctx := context.Background()
 
+	if deleter, ok := executor.(engine.Deleter); ok {
+		return s.runDelete(ctx, deleter, stmt)
+	}
+
 	if summarizer, ok := executor.(engine.Summarizer); ok {
 		summary, err := summarizer.Summarize(ctx, stmt)
 		if err != nil {
@@ -142,6 +146,31 @@ func (s *Shell) runQuery(line string) error {
 	}
 
 	return s.cfg.Renderer.Render(s.cfg.Out, sink.Rows)
+}
+
+func (s *Shell) runDelete(ctx context.Context, deleter engine.Deleter, stmt *query.Statement) error {
+	plan, err := deleter.Plan(ctx, stmt)
+	if err != nil {
+		return err
+	}
+	if plan.IsEmpty() {
+		return s.cfg.Delete.Nothing(s.cfg.Out)
+	}
+
+	if err := s.cfg.Delete.Preview(s.cfg.Out, plan); err != nil {
+		return err
+	}
+
+	answer, err := s.cfg.Reader.ReadLine(output.ConfirmPrompt)
+	if err != nil || strings.TrimSpace(answer) != output.ConfirmWord {
+		return s.cfg.Delete.Cancelled(s.cfg.Out)
+	}
+
+	result, err := deleter.Commit(ctx, plan)
+	if err != nil {
+		return err
+	}
+	return s.cfg.Delete.Result(s.cfg.Out, result)
 }
 
 func (s *Shell) Dispatch(line string) error {
