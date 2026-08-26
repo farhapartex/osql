@@ -52,6 +52,7 @@ Then try a few things:
 
 ```bash
 files from 'Documents'                     # what is in here?
+cd Documents                               # move around, like a normal shell
 folders from 'Documents' where count(child) > 5
 count(all) from 'Documents'                # just the number
 summary from 'Documents' recursive         # sizes and biggest files

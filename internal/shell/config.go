@@ -21,6 +21,7 @@ type Config struct {
 	AppSummary    output.AppSummaryRenderer
 	Summary       output.SummaryRenderer
 	Delete        output.DeleteRenderer
+	Resolver      *engine.PathResolver
 	Store         state.Store
 	Out           io.Writer
 	Err           io.Writer

@@ -18,7 +18,7 @@ func newExecutorFor(t *testing.T) (*engine.NewExecutor, string) {
 	t.Helper()
 
 	root := t.TempDir()
-	fsys := vfs.NewOS(root)
+	fsys := vfs.OS()
 	return engine.NewNewExecutor(fsys, engine.NewPathResolver(fsys, root)), root
 }
 
@@ -323,20 +323,17 @@ func TestNewRefusesTheRootItself(t *testing.T) {
 	}
 }
 
-func TestNewRefusesToEscapeTheRoot(t *testing.T) {
+func TestNewCanCreateAboveTheStartDirectory(t *testing.T) {
 	exec, root := newExecutorFor(t)
 
-	for _, input := range []string{"new file '../escape.txt'", "new folder '../../escape'"} {
-		t.Run(input, func(t *testing.T) {
-			_, err := execNew(t, exec, input)
-			if !oerr.Is(err, oerr.KindOutsideRoot) {
-				t.Errorf("error kind = %v, want outside_root", err)
-			}
-		})
-	}
+	made := filepath.Join(filepath.Dir(root), "sibling.txt")
+	t.Cleanup(func() { os.Remove(made) })
 
-	if _, err := os.Stat(filepath.Join(filepath.Dir(root), "escape.txt")); err == nil {
-		t.Error("a file was created outside the root")
+	if _, err := execNew(t, exec, "new file '../sibling.txt'"); err != nil {
+		t.Fatalf("creating above the start directory must work now: %v", err)
+	}
+	if _, err := os.Stat(made); err != nil {
+		t.Errorf("file was not created at %q: %v", made, err)
 	}
 }
 

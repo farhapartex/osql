@@ -4,7 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"text/tabwriter"
+
+	"github.com/farhapartex/osql/internal/oerr"
 )
 
 var ErrExit = errors.New("exit")
@@ -83,11 +86,51 @@ func DefaultBuiltins() *BuiltinRegistry {
 			Run:     builtinClear,
 		},
 		Builtin{
+			Name:    "cd",
+			Summary: "move to another folder; \"cd\" alone goes home, \"cd -\" goes back",
+			Run:     builtinChangeDir,
+		},
+		Builtin{
+			Name:    "pwd",
+			Summary: "show the folder you are in",
+			Run:     builtinPrintDir,
+		},
+		Builtin{
 			Name:    "history",
 			Summary: "show recent commands; \"history clear\" empties the file",
 			Run:     builtinHistory,
 		},
 	)
+}
+
+func builtinChangeDir(s *Shell, args []string) error {
+	if s.cfg.Resolver == nil {
+		return oerr.CannotChangeDir("", "this session has no folder to move from")
+	}
+	if len(args) > 1 {
+		return oerr.CannotChangeDir(strings.Join(args, " "), "give me one folder, not several")
+	}
+
+	target := ""
+	if len(args) == 1 {
+		target = args[0]
+	}
+
+	if _, err := s.cfg.Resolver.Chdir(target); err != nil {
+		return err
+	}
+	return nil
+}
+
+func builtinPrintDir(s *Shell, args []string) error {
+	if len(args) > 0 {
+		return oerr.PwdTakesNoPath(args[0])
+	}
+	if s.cfg.Resolver == nil {
+		return oerr.CannotChangeDir("", "this session has no folder to report")
+	}
+	_, err := fmt.Fprintln(s.cfg.Out, s.cfg.Resolver.Dir())
+	return err
 }
 
 func builtinExit(s *Shell, args []string) error {

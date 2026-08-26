@@ -60,14 +60,15 @@ terminal. See [Opening files](opening.md#binary-files-are-refused).
 
 ---
 
-**`I can only look inside '/Users/you'. '../etc' points outside it.`**
+**`I couldn't move to '/etc/hosts': that is a file, not a folder`**
 
-`..` cannot climb above where `osql` started. If you need somewhere else, start
-it there:
+`cd` needs a folder. To read a file, use `open`.
 
-```bash
-osql --root /
-```
+---
+
+**`"pwd" just shows where you are, so it takes no folder. To move, use: cd x`**
+
+`pwd` answers "where am I"; `cd` is the one that moves.
 
 ---
 
@@ -286,9 +287,16 @@ enough that osql will not do it for nothing.
 
 ## Deleting
 
-**`I won't empty '/Users/you' itself. Name a folder inside it, or add a where clause.`**
+**`'~/docs' is the folder you are in, so I won't delete it. Move somewhere else first with "cd ..".`**
 
-Deleting everything in your home folder is refused. Name a folder inside it, or
+You cannot delete the ground you are standing on. Move up with `cd ..` first, or
+empty its contents instead with `delete all from '.'`.
+
+---
+
+**`I won't empty '/' itself. Name a folder inside it, or add a where clause.`**
+
+Emptying the whole disk, or your whole home folder, is refused. Name a folder inside it, or
 narrow it with `where`.
 
 ---

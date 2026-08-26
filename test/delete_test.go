@@ -47,8 +47,9 @@ func newDeleteFixture(t *testing.T) deleteFixture {
 		t.Fatal(err)
 	}
 
-	fsys := vfs.NewOS(root)
-	resolver := engine.NewPathResolver(fsys, root)
+	home := t.TempDir()
+	fsys := vfs.OS()
+	resolver := engine.NewPathResolverAt(fsys, root, home)
 	compiler := engine.NewCompiler(engine.DefaultFields(fsys), engine.DefaultOperators())
 	trash := vfs.NewTrash(root, func() time.Time { return time.Date(2026, 8, 26, 12, 0, 0, 0, time.UTC) })
 
@@ -382,7 +383,7 @@ func TestDeleteIgnoresTheSkipList(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fsys := vfs.NewOS(root)
+	fsys := vfs.OS()
 	exec := engine.NewDeleteExecutor(fsys, engine.NewPathResolver(fsys, root),
 		engine.NewCompiler(engine.DefaultFields(fsys), engine.DefaultOperators()),
 		vfs.NewTrash(root, nil))
@@ -415,7 +416,6 @@ func TestDeleteRefusesTheRoot(t *testing.T) {
 
 	for _, input := range []string{
 		"delete all from '/'",
-		"delete all from '.'",
 		"delete all from '~'",
 		"delete files from '/'",
 		"delete folder '/'",
@@ -476,11 +476,44 @@ func TestDeleteEmptySelection(t *testing.T) {
 	}
 }
 
-func TestDeleteRefusesToEscapeTheRoot(t *testing.T) {
+func TestDeleteCanPlanAboveTheStartDirectory(t *testing.T) {
 	f := newDeleteFixture(t)
 
-	if _, err := f.plan(t, "delete file '../outside.txt'"); !oerr.Is(err, oerr.KindOutsideRoot) {
-		t.Errorf("error = %v, want outside_root", err)
+	outside := filepath.Join(filepath.Dir(f.root), "outside.txt")
+	if err := os.WriteFile(outside, []byte("o"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Remove(outside) })
+
+	plan, err := f.plan(t, "delete file '../outside.txt'")
+	if err != nil {
+		t.Fatalf("planning above the start directory must work now: %v", err)
+	}
+	if len(plan.Victims) != 1 {
+		t.Fatalf("planned %d victims, want 1", len(plan.Victims))
+	}
+	if _, err := os.Stat(outside); err != nil {
+		t.Error("planning must not delete anything")
+	}
+}
+
+func TestDeleteRefusesTheFolderYouAreIn(t *testing.T) {
+	f := newDeleteFixture(t)
+
+	if _, err := f.plan(t, "delete folder '.'"); !oerr.Is(err, oerr.KindRefuseDeleteHere) {
+		t.Errorf("error = %v, want refuse_delete_here", err)
+	}
+}
+
+func TestDeleteCanEmptyTheFolderYouAreIn(t *testing.T) {
+	f := newDeleteFixture(t)
+
+	plan, err := f.plan(t, "delete all from '.'")
+	if err != nil {
+		t.Fatalf("emptying the current folder is allowed with a confirmation: %v", err)
+	}
+	if len(plan.Victims) == 0 {
+		t.Error("planned nothing")
 	}
 }
 

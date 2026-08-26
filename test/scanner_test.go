@@ -368,7 +368,7 @@ func TestScanUnreadableSubtreeIsSkippedNotFatal(t *testing.T) {
 	}
 	t.Cleanup(func() { os.Chmod(locked, 0o755) })
 
-	vf := vfs.NewOS(root)
+	vf := vfs.OS()
 	resolver := engine.NewPathResolver(vf, root)
 	resolved, err := resolver.Resolve(".")
 	if err != nil {
@@ -414,7 +414,7 @@ func TestScanUnreadableRootIsAnError(t *testing.T) {
 	}
 	t.Cleanup(func() { os.Chmod(locked, 0o755) })
 
-	vf := vfs.NewOS(root)
+	vf := vfs.OS()
 	resolver := engine.NewPathResolver(vf, root)
 	resolved, err := resolver.Resolve("locked")
 	if err != nil {

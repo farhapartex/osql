@@ -13,9 +13,15 @@ import (
 	"github.com/farhapartex/osql/internal/oerr"
 	"github.com/farhapartex/osql/internal/output"
 	"github.com/farhapartex/osql/internal/query"
+	"github.com/farhapartex/osql/internal/textwidth"
 )
 
-const Prompt = "osql > "
+const (
+	Prompt          = "osql > "
+	PromptName      = "osql"
+	PromptTail      = " > "
+	promptPathWidth = 40
+)
 
 var (
 	ErrNoReader   = errors.New("no line reader configured")
@@ -48,6 +54,14 @@ func (s *Shell) Builtins() *BuiltinRegistry {
 	return s.builtins
 }
 
+func (s *Shell) Prompt() string {
+	if s.cfg.Resolver == nil {
+		return Prompt
+	}
+	where := s.cfg.Resolver.Display(s.cfg.Resolver.Dir())
+	return PromptName + " " + textwidth.TruncateMiddle(where, promptPathWidth) + PromptTail
+}
+
 func (s *Shell) Greeting() string {
 	return fmt.Sprintf("%s — type \"help\" for commands, \"exit\" to quit.", buildinfo.String(s.cfg.Version, s.cfg.Commit))
 }
@@ -68,7 +82,7 @@ func (s *Shell) Run() error {
 	fmt.Fprintln(s.cfg.Out, s.Greeting())
 
 	for {
-		line, err := s.cfg.Reader.ReadLine(Prompt)
+		line, err := s.cfg.Reader.ReadLine(s.Prompt())
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				fmt.Fprintln(s.cfg.Out)
@@ -217,7 +231,8 @@ func (s *Shell) Dispatch(line string) error {
 	name := strings.ToLower(fields[0])
 
 	if b, ok := s.builtins.Lookup(name); ok {
-		return b.Run(s, fields[1:])
+		args := SplitArgs(line)
+		return b.Run(s, args[1:])
 	}
 	return s.runQuery(line)
 }

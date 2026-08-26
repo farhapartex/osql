@@ -127,7 +127,7 @@ osql_raw() {
 }
 
 osql() {
-  osql_raw "$1" | tail -n +2 | sed 's/osql > //g'
+  osql_raw "$1" | tail -n +2 | sed 's/osql[^>]*> //g'
 }
 
 expect_contains() {
@@ -247,7 +247,7 @@ main() {
   expect_cmd "unknown flag exits 1" 1 "$BIN" --frobnicate
   expect_cmd_contains "unknown flag explains itself" "osql --help" "$BIN" --frobnicate
   expect_cmd_contains "init reports the state directory" ".osql" "$BIN" init
-  expect_cmd_contains "--help documents the root flag" "--root" "$BIN" --help
+  expect_cmd_contains "--help documents the dir flag" "--dir" "$BIN" --help
   expect_cmd "--root with no value exits 1" 1 "$BIN" --root
   expect_cmd "--root with init exits 1" 1 "$BIN" init --root /
 
@@ -295,16 +295,19 @@ exit
 
   section "select — paths are root-relative"
   expect_names "bare path" "files from 'docs' where type = 'txt'" "notes.txt q4-report.txt secret.txt"
-  expect_names "leading slash means the root, not the filesystem" "files from '/docs' where type = 'txt'" "notes.txt q4-report.txt secret.txt"
+  expect_names "a bare folder name is relative" "files from 'docs' where type = 'txt'" "notes.txt q4-report.txt secret.txt"
   expect_names "tilde form" "files from '~/docs' where type = 'txt'" "notes.txt q4-report.txt secret.txt"
   expect_names "dot prefix form" "files from './docs' where type = 'txt'" "notes.txt q4-report.txt secret.txt"
   expect_contains "bare word without quotes" "files from docs" "notes.txt"
   expect_contains "dot is the root" "files from '.'" "app.log"
   expect_contains "tilde is the root" "folders from '~'" "docs"
-  expect_contains "slash is the root" "folders from '/'" "docs"
-  expect_contains "nested rooted path" "files from '/nested/deep'" "far.txt"
-  expect_line "escaping the root is refused" "files from '../..'" "I can only look inside '$HOME'. '../..' points outside it."
-  expect_line "system paths are not reachable" "files from '/etc'" "I couldn't find a folder at '/etc'. Check the path and try again."
+  expect_contains "dot is the current folder" "folders from '.'" "docs"
+  expect_contains "nested relative path" "files from 'nested/deep'" "far.txt"
+  expect_contains "an absolute path is absolute" "files from '$FIXTURE/nested/deep'" "far.txt"
+  mkdir -p "$WORK/sibling" && : > "$WORK/sibling/reachable.txt"
+  expect_contains "paths above the start folder are reachable" "files from '../sibling'" "reachable.txt"
+  expect_contains "absolute paths are reachable" "files from '$WORK/sibling'" "reachable.txt"
+  expect_absent "a real system path is reachable" "folders from '/'" "I couldn't find a folder"
 
   section "select — lexing"
   expect_contains "uppercase keywords" "FILES FROM 'docs'" "notes.txt"
@@ -342,7 +345,7 @@ exit
   section "open"
   expect_line "prints the first line" "open 'text/readme.txt'" "line one"
   expect_line "prints the second line" "open 'text/readme.txt'" "line two"
-  expect_contains "reads a nested path" "open '/text/readme.txt'" "line one"
+  expect_contains "reads a nested path" "open 'text/readme.txt'" "line one"
   expect_contains "tilde form works" "open '~/text/readme.txt'" "line one"
   expect_contains "bare word path works" "open text/readme.txt" "line one"
   expect_line "adds a missing final newline" "open 'text/bare.txt'" "no trailing newline"
@@ -354,7 +357,8 @@ exit
   expect_absent "prints nothing for binary" "open 'text/prog.bin'" "ELF"
   expect_line "needs a path" "open" 'I need a file after "open" — for example: open '"'"'notes.txt'"'"''
   expect_contains "rejects trailing words" "open 'text/readme.txt' junk" 'I don'"'"'t understand "junk" here.'
-  expect_line "cannot escape the root" "open '../../etc/hosts'" "I can only look inside '$HOME'. '../../etc/hosts' points outside it."
+  printf 'outside body\n' > "$WORK/sibling/outside.txt"
+  expect_contains "open reads above the start folder" "open '../sibling/outside.txt'" "outside body"
   empty_out="$(osql "open 'text/empty.txt'")"
   if [ -z "$(printf '%s' "$empty_out" | tr -d '[:space:]')" ]; then
     pass "empty file prints nothing"
@@ -364,9 +368,9 @@ exit
 
   section "new"
   expect_line "creates a file" "new file 'made.txt'" "Created 'made.txt'"
-  expect_contains "the file is really there" "files from '/' where name = 'made.txt'" "made.txt"
+  expect_contains "the file is really there" "files from '.' where name = 'made.txt'" "made.txt"
   expect_line "creates a folder" "new folder 'made_dir'" "Created 'made_dir'"
-  expect_contains "the folder is really there" "folders from '/' where name = 'made_dir'" "made_dir"
+  expect_contains "the folder is really there" "folders from '.' where name = 'made_dir'" "made_dir"
   expect_line "writes data" "new file 'greet.txt' data='hello hello line testing'" "Created 'greet.txt'"
   expect_line "data is readable back" "open 'greet.txt'" "hello hello line testing"
   expect_contains "creates missing parents" "new file 'deep/one/two/leaf.txt' data='way down here'" "Created 'deep/one/two/leaf.txt'" "also created:"
@@ -384,7 +388,12 @@ exit
   expect_line "needs a path" "new file" 'I need a path after "new file" — for example: new file '"'"'notes.txt'"'"''
   expect_line "data needs a value" "new file 'x.txt' data=" "data needs a value in quotes — for example: data='hello there'"
   expect_line "folders take no data" "new folder 'y' data='z'" "A folder can't hold data. Drop the data part, or use: new file 'notes.txt' data='hello'"
-  expect_line "cannot create outside the root" "new file '../escape.txt'" "I can only look inside '$HOME'. '../escape.txt' points outside it."
+  osql "new file '../sibling/made.txt'" >/dev/null
+  if [ -f "$WORK/sibling/made.txt" ]; then
+    pass "new creates above the start folder"
+  else
+    fail "new creates above the start folder" "file was not created"
+  fi
   if [ -e "$(dirname "$HOME")/escape.txt" ]; then
     fail "nothing is created outside the root" "escape.txt exists above HOME"
   else
@@ -511,12 +520,24 @@ exit
   file_kept "the folder survives a cancel" "keepme/inner/deep.txt"
 
   expect_contains "nothing matched" "delete files from 'trashme' where type = 'zzz'" "nothing to delete"
-  expect_line "refuses to empty the root" "delete all from '/'" "I won't empty '$HOME' itself. Name a folder inside it, or add a where clause."
-  expect_line "refuses the root by dot" "delete all from '.'" "I won't empty '$HOME' itself. Name a folder inside it, or add a where clause."
+  expect_line "refuses to empty the filesystem root" "delete all from '/'" "I won't empty '/' itself. Name a folder inside it, or add a where clause."
+  expect_line "refuses to empty home" "delete all from '~'" "I won't empty '~' itself. Name a folder inside it, or add a where clause."
+  here_out="$(printf "cd docs\ndelete folder '.'\nexit\n" | (cd "$FIXTURE" && "$BIN") 2>&1)"
+  if printf '%s' "$here_out" | grep -qF "is the folder you are in, so I won't delete it"; then
+    pass "refuses to delete the folder you are in"
+  else
+    fail "refuses to delete the folder you are in" "no refusal" "$here_out"
+  fi
   expect_line "wrong kind suggests the other" "delete file 'trashme'" "'trashme' is a folder, not a file. Try: delete folder 'trashme'"
   expect_line "wrong kind the other way" "delete folder 'trashme/keep.txt'" "'trashme/keep.txt' is a file, not a folder. Try: delete file 'trashme/keep.txt'"
   expect_line "missing file" "delete file 'nope.txt'" "I couldn't find a file at 'nope.txt'. Check the path and try again."
-  expect_line "cannot escape the root" "delete file '../escape.txt'" "I can only look inside '$HOME'. '../escape.txt' points outside it."
+  : > "$WORK/sibling/doomed.txt"
+  printf "delete file '../sibling/doomed.txt'\nyes\nexit\n" | (cd "$FIXTURE" && "$BIN") >/dev/null 2>&1
+  if [ -f "$WORK/sibling/doomed.txt" ]; then
+    fail "delete reaches above the start folder" "file survived"
+  else
+    pass "delete reaches above the start folder"
+  fi
   expect_line "needs a target" "delete" 'I need "file", "folder", "files", "folders" or "all" after "delete" — for example: delete file '"'"'notes.txt'"'"''
   expect_line "unknown target" "delete thing 'x'" 'I can'"'"'t delete "thing". Try "delete file", "delete folder", or "delete files from".'
   expect_line "needs a path" "delete file" 'I need a path after "delete file" — for example: delete file '"'"'notes.txt'"'"''
@@ -546,18 +567,53 @@ exit
   expect_contains "query ends early" "files from 'docs' where" 'The query ends after "where".'
   expect_contains "or is not supported yet" "files from 'docs' where name = 'a' or name = 'b'" 'I don'"'"'t understand "or" here.'
 
-  section "--root override"
-  root_out="$(printf "folders from '/'\nexit\n" | (cd "$FIXTURE" && "$BIN" --root "$FIXTURE/docs") 2>&1)"
-  if printf '%s' "$root_out" | grep -qF "is empty."; then
-    pass "--root anchors elsewhere"
+  section "--dir override"
+  dir_out="$(printf "files from '.'\nexit\n" | (cd "$FIXTURE" && "$BIN" --dir "$FIXTURE/docs") 2>&1)"
+  if printf '%s' "$dir_out" | grep -qF "notes.txt"; then
+    pass "--dir starts elsewhere"
   else
-    fail "--root anchors elsewhere" "expected docs to have no folders" "$root_out"
+    fail "--dir starts elsewhere" "expected notes.txt from docs" "$dir_out"
   fi
-  root_eq="$(printf "files from '/'\nexit\n" | (cd "$FIXTURE" && "$BIN" --root="$FIXTURE/docs") 2>&1)"
-  if printf '%s' "$root_eq" | grep -qF "notes.txt"; then
-    pass "--root=path form works"
+  dir_eq="$(printf "pwd\nexit\n" | (cd "$FIXTURE" && "$BIN" --dir="$FIXTURE/docs") 2>&1)"
+  if printf '%s' "$dir_eq" | grep -qF "$FIXTURE/docs"; then
+    pass "--dir=path form works"
   else
-    fail "--root=path form works" "expected notes.txt" "$root_eq"
+    fail "--dir=path form works" "expected the docs path from pwd" "$dir_eq"
+  fi
+  root_alias="$(printf "pwd\nexit\n" | (cd "$FIXTURE" && "$BIN" --root "$FIXTURE/docs") 2>&1)"
+  if printf '%s' "$root_alias" | grep -qF "$FIXTURE/docs"; then
+    pass "--root still works as an alias"
+  else
+    fail "--root still works as an alias" "expected the docs path" "$root_alias"
+  fi
+
+  section "cd and pwd"
+  cd_out="$(printf "pwd\ncd docs\npwd\ncd ..\npwd\nexit\n" | (cd "$FIXTURE" && "$BIN") 2>&1)"
+  if printf '%s' "$cd_out" | grep -qF "$FIXTURE/docs"; then
+    pass "cd moves into a folder"
+  else
+    fail "cd moves into a folder" "pwd never showed the docs path" "$cd_out"
+  fi
+  expect_contains "cd into a missing folder fails" "cd nowhere" "I couldn't find a folder at 'nowhere'"
+  expect_contains "cd into a file fails" "cd docs/notes.txt" "that is a file, not a folder"
+  expect_contains "pwd takes no folder" "pwd somewhere" 'takes no folder'
+  cd_home="$(printf "cd\npwd\nexit\n" | (cd "$FIXTURE" && "$BIN") 2>&1)"
+  if printf '%s' "$cd_home" | grep -qF "$HOME"; then
+    pass "bare cd goes home"
+  else
+    fail "bare cd goes home" "expected \$HOME" "$cd_home"
+  fi
+  cd_back="$(printf "cd docs\ncd -\npwd\nexit\n" | (cd "$FIXTURE" && "$BIN") 2>&1)"
+  if printf '%s' "$cd_back" | tail -2 | grep -qF "$FIXTURE"; then
+    pass "cd - returns to the previous folder"
+  else
+    fail "cd - returns to the previous folder" "did not return" "$cd_back"
+  fi
+  prompt_out="$(printf "cd docs\nexit\n" | (cd "$FIXTURE" && "$BIN") 2>&1)"
+  if printf '%s' "$prompt_out" | grep -q "osql ~/docs >"; then
+    pass "the prompt shows where you are"
+  else
+    fail "the prompt shows where you are" "prompt did not show ~/docs" "$prompt_out"
   fi
 
   section "state"

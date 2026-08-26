@@ -297,7 +297,7 @@ func TestOpenDetectsBinaryPastTheFirstChunk(t *testing.T) {
 	}
 }
 
-func TestOpenRefusesToEscapeTheRoot(t *testing.T) {
+func TestOpenReadsAboveTheStartDirectory(t *testing.T) {
 	fsys := fstest.MapFS{"box/inside.txt": {Data: []byte("in")}, "outside.txt": {Data: []byte("out")}}
 	vf := &fakeFileSystem{fsys: fsys}
 	resolver := engine.NewPathResolver(vf, "/box")
@@ -306,12 +306,11 @@ func TestOpenRefusesToEscapeTheRoot(t *testing.T) {
 	stmt := &query.Statement{Verb: query.VerbOpen, Path: "../outside.txt"}
 	buf := &bytes.Buffer{}
 
-	err := exec.WriteContent(context.Background(), stmt, buf)
-	if !oerr.Is(err, oerr.KindOutsideRoot) {
-		t.Errorf("error kind = %v, want outside_root", err)
+	if err := exec.WriteContent(context.Background(), stmt, buf); err != nil {
+		t.Fatalf("reading above the start directory must work now: %v", err)
 	}
-	if buf.Len() != 0 {
-		t.Error("wrote content from outside the root")
+	if buf.String() != "out\n" {
+		t.Errorf("content = %q, want \"out\\n\"", buf.String())
 	}
 }
 
@@ -382,7 +381,7 @@ func TestOpenOnRealFilesystem(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	vf := vfs.NewOS(root)
+	vf := vfs.OS()
 	exec := engine.NewOpenExecutor(vf, engine.NewPathResolver(vf, root))
 
 	buf := &bytes.Buffer{}
@@ -409,7 +408,7 @@ func TestOpenNoPermissionOnRealFilesystem(t *testing.T) {
 	}
 	t.Cleanup(func() { os.Chmod(locked, 0o644) })
 
-	vf := vfs.NewOS(root)
+	vf := vfs.OS()
 	exec := engine.NewOpenExecutor(vf, engine.NewPathResolver(vf, root))
 
 	buf := &bytes.Buffer{}

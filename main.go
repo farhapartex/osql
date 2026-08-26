@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 
 	"github.com/farhapartex/osql/internal/apps"
@@ -61,9 +62,15 @@ func run(args []string) error {
 		return err
 	}
 
-	queryRoot := opts.Root
-	if queryRoot == "" {
-		queryRoot = home
+	startDir := opts.Dir
+	if startDir == "" {
+		startDir, err = os.Getwd()
+		if err != nil {
+			startDir = home
+		}
+	}
+	if abs, aerr := filepath.Abs(startDir); aerr == nil {
+		startDir = abs
 	}
 
 	root, err := state.DefaultRoot()
@@ -95,9 +102,9 @@ func run(args []string) error {
 		return err
 	}
 
-	fsys := vfs.NewOS(queryRoot)
+	fsys := vfs.OS()
 	compiler := engine.NewCompiler(engine.DefaultFields(fsys), engine.DefaultOperators())
-	resolver := engine.NewPathResolver(fsys, fsys.Root())
+	resolver := engine.NewPathResolverAt(fsys, startDir, home)
 	skip := engine.DefaultSkipList()
 	selector := engine.NewSelectExecutor(fsys, resolver, compiler, skip)
 	counter := engine.NewCountExecutor(fsys, resolver, compiler, skip)
@@ -123,6 +130,7 @@ func run(args []string) error {
 		AppSummary:    output.NewAppSummary(),
 		Summary:       output.NewSummary(),
 		Delete:        output.NewDelete(),
+		Resolver:      resolver,
 		Store:         store,
 		Out:           os.Stdout,
 		Err:           os.Stderr,
