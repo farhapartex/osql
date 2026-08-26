@@ -19,7 +19,6 @@ const (
 	countWidth = 7
 	sizeWidth  = 11
 	nameWidth  = 46
-	ellipsis   = "…"
 )
 
 type SummaryRenderer struct{}

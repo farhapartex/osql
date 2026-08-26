@@ -1,6 +1,8 @@
-package output
+package textwidth
 
 import "strings"
+
+const Ellipsis = "…"
 
 var wideRanges = [][2]rune{
 	{0x1100, 0x115F},
@@ -19,7 +21,7 @@ var wideRanges = [][2]rune{
 	{0x20000, 0x3FFFD},
 }
 
-func RuneWidth(r rune) int {
+func Rune(r rune) int {
 	for _, span := range wideRanges {
 		if r >= span[0] && r <= span[1] {
 			return 2
@@ -28,36 +30,36 @@ func RuneWidth(r rune) int {
 	return 1
 }
 
-func DisplayWidth(s string) int {
+func Of(s string) int {
 	width := 0
 	for _, r := range s {
-		width += RuneWidth(r)
+		width += Rune(r)
 	}
 	return width
 }
 
-func padRight(s string, width int) string {
-	if gap := width - DisplayWidth(s); gap > 0 {
+func PadRight(s string, width int) string {
+	if gap := width - Of(s); gap > 0 {
 		return s + strings.Repeat(" ", gap)
 	}
 	return s
 }
 
-func padLeft(s string, width int) string {
-	if gap := width - DisplayWidth(s); gap > 0 {
+func PadLeft(s string, width int) string {
+	if gap := width - Of(s); gap > 0 {
 		return strings.Repeat(" ", gap) + s
 	}
 	return s
 }
 
-func truncateMiddle(s string, width int) string {
-	if DisplayWidth(s) <= width {
+func TruncateMiddle(s string, width int) string {
+	if Of(s) <= width {
 		return s
 	}
 
-	keep := width - DisplayWidth(ellipsis)
+	keep := width - Of(Ellipsis)
 	if keep < 2 {
-		return ellipsis
+		return Ellipsis
 	}
 
 	headBudget := (keep + 1) / 2
@@ -66,17 +68,17 @@ func truncateMiddle(s string, width int) string {
 	runes := []rune(s)
 	head := 0
 	used := 0
-	for head < len(runes) && used+RuneWidth(runes[head]) <= headBudget {
-		used += RuneWidth(runes[head])
+	for head < len(runes) && used+Rune(runes[head]) <= headBudget {
+		used += Rune(runes[head])
 		head++
 	}
 
 	tail := len(runes)
 	used = 0
-	for tail > head && used+RuneWidth(runes[tail-1]) <= tailBudget {
-		used += RuneWidth(runes[tail-1])
+	for tail > head && used+Rune(runes[tail-1]) <= tailBudget {
+		used += Rune(runes[tail-1])
 		tail--
 	}
 
-	return string(runes[:head]) + ellipsis + string(runes[tail:])
+	return string(runes[:head]) + Ellipsis + string(runes[tail:])
 }
