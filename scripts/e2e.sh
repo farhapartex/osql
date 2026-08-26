@@ -633,6 +633,34 @@ exit
     '"with size" goes before "where" — for example: apps with size where source = '"'"'homebrew'"'"''
   expect_contains "count(apps) refuses with size" "count(apps) with size" "A count has no size column"
 
+  expect_contains "source alias hmb works" "apps where source = 'hmb'" "SOURCE"
+  expect_absent "alias resolves to the canonical name" "apps where source = 'hmb'" "hmb "
+  expect_contains "source alias brew works" "apps where source = 'brew'" "SOURCE"
+
+  summary_out="$(osql "summary apps")"
+  if printf '%s' "$summary_out" | grep -qF "Installed apps"; then
+    pass "summary apps prints a heading"
+    for block in WHAT SOURCE LARGEST MODIFIED; do
+      printf '%s' "$summary_out" | grep -qE "^  $block" \
+        && pass "summary apps has a $block block" \
+        || fail "summary apps has a $block block" "block missing" "$summary_out"
+    done
+  elif printf '%s' "$summary_out" | grep -qF "I didn't find any installed apps."; then
+    pass "summary apps prints a heading (skipped: no apps on this host)"
+    for block in WHAT SOURCE LARGEST MODIFIED; do
+      pass "summary apps has a $block block (skipped: no apps on this host)"
+    done
+  else
+    fail "summary apps prints a heading" "unexpected output" "$summary_out"
+  fi
+
+  expect_line "summary apps refuses a path" "summary apps from 'docs'" \
+    '"apps" already looks everywhere your system installs apps, so it needs no path. Try: apps'
+  expect_line "summary apps refuses recursive" "summary apps recursive" \
+    '"apps" is never recursive — looking inside an app would list the helpers it ships with as if they were apps. Try: apps'
+  expect_contains "summary apps refuses where" "summary apps where source = 'hmb'" "A summary covers everything"
+  expect_contains "folder summary still works" "summary from 'docs'" "WHAT" "COUNT"
+
   section "summary"
   printf '  %s%d passed%s' "$GREEN" "$PASS" "$OFF"
   if [ "$FAIL" -gt 0 ]; then
