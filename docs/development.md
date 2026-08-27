@@ -14,36 +14,58 @@ the code.
 - [House rules](#house-rules)
 - [Two rules that are easy to break](#two-rules-that-are-easy-to-break)
 - [Before you call it done](#before-you-call-it-done)
+- [Releasing](#releasing)
 - [License](#license)
 
 ## Commands
 
+Clone it and build. You need **Go 1.26 or newer** and nothing else — `osql` has
+no outside libraries, so there is nothing to download.
+
 ```bash
-make build     # build bin/osql
-make install   # put osql on your PATH
-make test      # go test ./... -race
-make e2e       # run the real binary against a test folder
-make bench     # benchmarks with allocation counts
-make vet       # go vet ./...
-make fmt       # go fmt ./...
-make clean     # remove bin/
-make all       # vet, test, build, e2e
+git clone https://github.com/farhapartex/osql.git
+cd osql
+make build
+./bin/osql
 ```
+
+```bash
+make build       # build bin/osql
+make install     # put osql on your PATH via $GOBIN
+make test        # go test ./... -race
+make e2e         # run the real binary against a test folder
+make bench       # benchmarks with allocation counts
+make vet         # go vet ./...
+make fmt         # go fmt ./...
+make fmt-check   # fail if anything needs gofmt
+make cross       # check every release platform still builds
+make dist        # build release tarballs into dist/
+make version       # print what a release would be tagged
+make version-check # fail if VERSION is malformed
+make release-check # also fail if that tag already exists
+make clean       # remove bin/ and dist/
+make all         # fmt-check, vet, test, build, e2e
+```
+
+A binary built from a working copy reports the last tag plus how far past it you
+are, so `osql --version` looks like `osql v0.1.0-3-gabc1234 (abc1234)` rather
+than a clean release number. That is deliberate — it tells you the build is not
+a release.
 
 Run `make e2e` after any change. It builds the program, points it at a throwaway
 folder, and prints a named pass or fail for every behaviour:
 
 ```
-select — paths are root-relative
-  ✔ bare path
-  ✔ leading slash means the root, not the filesystem
+paths
+  ✔ a bare folder name is relative
+  ✔ dot is the current folder
   ✘ tilde form
     query: files from '~/docs'
       | expected: notes.txt
       |   actual: No files matched.
 
 summary
-  95 passed, 1 failed
+  241 passed, 1 failed
 ```
 
 It sets `HOME` to a temp folder, so your real `~/.osql` is never touched.
@@ -114,6 +136,40 @@ make e2e
 ```
 
 Report what actually happened, including the failures.
+
+## Releasing
+
+The version lives in one place: the `VERSION` file at the top of the repository,
+holding a bare semver number with no `v`.
+
+```bash
+cat VERSION      # 0.1.0
+make version     # v0.1.0
+```
+
+To cut a release:
+
+```bash
+echo 0.2.0 > VERSION           # 1. bump it
+git commit -am "release 0.2.0" # 2. commit and get it onto main
+git tag v0.2.0                 # 3. tag it — v plus the file's contents
+git push origin main --tags
+```
+
+Pushing the tag starts `release.yml`: it runs the whole suite on macOS and Linux
+first, then builds four platforms, checks each binary reports the right version,
+and publishes the release with checksums.
+
+**The release refuses to publish if the tag and the `VERSION` file disagree**, so
+a forgotten bump fails loudly instead of shipping a mislabelled binary.
+
+**Releases only happen on a tag.** Ordinary pushes and pull requests run the
+tests; they never build or publish a release.
+
+Version numbers follow semver, and `0.x` already means "expect breaking
+changes" — so no `-beta` suffixes, and GitHub's prerelease box stays unticked.
+Both would quietly break installs: the suffix stops `go install @latest` from
+finding the release, and the box stops `install.sh` from finding it.
 
 ## License
 

@@ -17,7 +17,6 @@ Pick whichever line below suits you. All of them end with an `osql` you can run.
 - [First run](#first-run)
 - [Updating](#updating)
 - [Removing it](#removing-it)
-- [Other build commands](#other-build-commands)
 
 ## The quick way
 
@@ -84,16 +83,9 @@ Each tarball also carries the `LICENSE` and `README.md`.
 
 ## From source
 
-You need **Go 1.26 or newer** and nothing else. `osql` uses no outside
-libraries, so there is nothing to download.
-
-```bash
-git clone https://github.com/farhapartex/osql.git
-cd osql
-make build       # builds ./bin/osql
-```
-
-`make install` puts it in your `$GOBIN` instead.
+Building from a clone is a contributor path rather than an install path — it
+needs Go and gives you an unreleased binary. If that is what you want, see
+[Development](development.md).
 
 ## Check it worked
 
@@ -134,18 +126,6 @@ Run the installer again. It replaces the binary in place.
 ```bash
 rm ~/.local/bin/osql      # or wherever you put it
 rm -rf ~/.osql            # your history and system notes
-```
-
-## Other build commands
-
-```bash
-make test        # unit tests, with the race detector
-make e2e         # run the real program against a test folder
-make vet         # check for common mistakes
-make fmt-check   # fail if anything needs gofmt
-make cross       # check every platform still builds
-make dist        # build release tarballs into dist/
-make clean       # delete bin/ and dist/
 ```
 
 <!-- nav -->

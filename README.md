@@ -72,7 +72,7 @@ open 'Documents/notes.txt'                 # print a text file
 
 Type `help` to see everything, and `exit` or `Ctrl+D` to leave.
 
-To use `osql` from any folder, run `make install` — see
+Other ways to install — Go, a tarball, or from source — are in
 [Installation](docs/installation.md).
 
 ## Documentation
