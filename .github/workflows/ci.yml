@@ -28,6 +28,9 @@ jobs:
       - name: go version
         run: go version
 
+      - name: version file is well formed
+        run: make version-check
+
       - name: formatting
         run: make fmt-check
 

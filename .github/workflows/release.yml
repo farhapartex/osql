@@ -51,6 +51,21 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: the tag must match the VERSION file
+        run: |
+          set -eu
+          make version-check
+          file_version="v$(cat VERSION)"
+          tag="${{ github.ref_name }}"
+          if [ "$file_version" != "$tag" ]; then
+            echo "The tag and the VERSION file disagree."
+            echo "  tag:          $tag"
+            echo "  VERSION file: $file_version"
+            echo "Bump VERSION to match the tag (or retag) and try again."
+            exit 1
+          fi
+          echo "tag $tag matches VERSION"
+
       - name: package every platform
         run: make dist VERSION=${{ github.ref_name }}
 
