@@ -2,14 +2,15 @@ BINARY  := osql
 BIN_DIR := bin
 DIST_DIR := dist
 
-VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+FILE_VERSION := $(shell cat VERSION 2>/dev/null)
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo v$(FILE_VERSION))
 COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo none)
 LDFLAGS := -X main.version=$(VERSION) -X main.commit=$(COMMIT)
 RELEASE_LDFLAGS := -s -w $(LDFLAGS)
 
 PLATFORMS := darwin/arm64 darwin/amd64 linux/amd64 linux/arm64
 
-.PHONY: all build install test e2e bench vet fmt fmt-check cross dist clean
+.PHONY: all build install test e2e bench vet fmt fmt-check cross dist version version-check release-check clean
 
 all: fmt-check vet test build e2e
 
@@ -64,6 +65,22 @@ dist: clean
 	@cd $(DIST_DIR) && shasum -a 256 *.tar.gz > checksums.txt 2>/dev/null || \
 		(cd $(DIST_DIR) && sha256sum *.tar.gz > checksums.txt)
 	@echo "checksums written to $(DIST_DIR)/checksums.txt"
+
+version:
+	@echo v$(FILE_VERSION)
+
+version-check:
+	@if [ -z "$(FILE_VERSION)" ]; then echo "VERSION file is missing or empty"; exit 1; fi
+	@echo "$(FILE_VERSION)" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$$' || \
+		{ echo "VERSION must be a bare semver number like 0.2.0, got \"$(FILE_VERSION)\""; exit 1; }
+	@echo "VERSION is v$(FILE_VERSION)"
+
+release-check: version-check
+	@git fetch --tags --quiet 2>/dev/null || true
+	@if git rev-parse "v$(FILE_VERSION)" >/dev/null 2>&1; then \
+		echo "tag v$(FILE_VERSION) already exists — bump VERSION before tagging"; exit 1; \
+	fi
+	@echo "tag v$(FILE_VERSION) is free, ready to tag"
 
 clean:
 	rm -rf $(BIN_DIR) $(DIST_DIR)
