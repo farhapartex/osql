@@ -5,6 +5,17 @@
 How to build it, how to test it, and how to find your way around
 the code.
 
+---
+
+**On this page**
+
+- [Commands](#commands)
+- [Layout](#layout)
+- [House rules](#house-rules)
+- [Two rules that are easy to break](#two-rules-that-are-easy-to-break)
+- [Before you call it done](#before-you-call-it-done)
+- [License](#license)
+
 ## Commands
 
 ```bash
@@ -103,6 +114,13 @@ make e2e
 ```
 
 Report what actually happened, including the failures.
+
+## License
+
+osql is MIT licensed. The full text is in [LICENSE](../LICENSE) at the top of the
+repository.
+
+Contributions are taken under the same license. There is no CLA to sign.
 
 <!-- nav -->
 

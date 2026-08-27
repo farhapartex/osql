@@ -77,3 +77,8 @@ Start here:
 | [Error messages](docs/errors.md) | What a message means and how to fix it |
 
 **[See all 14 pages →](docs/README.md)**
+
+## License
+
+MIT — see [LICENSE](LICENSE). Use it, change it, ship it; just keep the
+copyright notice.
