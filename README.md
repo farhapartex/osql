@@ -41,11 +41,21 @@ Three things shape the whole tool:
 
 ## Quick start
 
-You need **Go 1.26 or newer**, on **macOS or Linux**.
+Install it:
 
 ```bash
-make build      # builds ./bin/osql
-./bin/osql
+curl -fsSL https://raw.githubusercontent.com/farhapartex/osql/main/install.sh | sh
+```
+
+That picks the right build for your machine, verifies its checksum, and puts
+`osql` in `~/.local/bin` without asking for `sudo`. Go users can
+`go install github.com/farhapartex/osql@latest` instead, and
+[Installation](docs/installation.md) covers building from source.
+
+Then run it:
+
+```bash
+osql
 ```
 
 Then try a few things:
