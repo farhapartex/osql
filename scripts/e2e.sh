@@ -122,6 +122,32 @@ file_kept() {
   fi
 }
 
+file_mode() {
+  mode="$(stat -c '%a' "$1" 2>/dev/null || true)"
+  case "$mode" in
+    [0-7][0-7][0-7]|[0-7][0-7][0-7][0-7]) printf '%s' "$mode"; return 0 ;;
+  esac
+  mode="$(stat -f '%Lp' "$1" 2>/dev/null || true)"
+  case "$mode" in
+    [0-7][0-7][0-7]|[0-7][0-7][0-7][0-7]) printf '%s' "$mode"; return 0 ;;
+  esac
+  printf 'unknown'
+}
+
+expect_apps_query() {
+  local name="$1" q="$2"
+  local out; out="$(osql "$q")"
+  if printf '%s' "$out" | grep -qE '^NAME +VERSION'; then
+    pass "$name"
+  elif printf '%s' "$out" | grep -qF "No apps matched."; then
+    pass "$name (no matching apps on this host)"
+  elif printf '%s' "$out" | grep -qF "I didn't find any installed apps."; then
+    pass "$name (no apps on this host)"
+  else
+    fail "$name" "query: $q -- neither a table nor a no-match message" "$out"
+  fi
+}
+
 osql_raw() {
   printf '%s\nexit\n' "$1" | (cd "$FIXTURE" && "$BIN") 2>&1
 }
@@ -619,9 +645,9 @@ exit
   section "state"
   if [ -d "$HOME/.osql" ]; then
     pass "state directory created on startup"
-    perms="$(stat -f '%Lp' "$HOME/.osql" 2>/dev/null || stat -c '%a' "$HOME/.osql")"
+    perms="$(file_mode "$HOME/.osql")"
     [ "$perms" = "700" ] && pass "state directory is 0700" || fail "state directory is 0700" "mode is $perms"
-    hperms="$(stat -f '%Lp' "$HOME/.osql/history.txt" 2>/dev/null || stat -c '%a' "$HOME/.osql/history.txt")"
+    hperms="$(file_mode "$HOME/.osql/history.txt")"
     [ "$hperms" = "600" ] && pass "history.txt is 0600" || fail "history.txt is 0600" "mode is $hperms"
     grep -q "^version:" "$HOME/.osql/system.txt" && pass "system.txt records a version" || fail "system.txt records a version" "no version line"
     grep -qF "files from 'docs'" "$HOME/.osql/history.txt" && pass "commands are recorded in history" || fail "commands are recorded in history" "query not found in history.txt"
@@ -689,9 +715,9 @@ exit
     '"with size" goes before "where" — for example: apps with size where source = '"'"'homebrew'"'"''
   expect_contains "count(apps) refuses with size" "count(apps) with size" "A count has no size column"
 
-  expect_contains "source alias hmb works" "apps where source = 'hmb'" "SOURCE"
+  expect_apps_query "source alias hmb is accepted" "apps where source = 'hmb'"
   expect_absent "alias resolves to the canonical name" "apps where source = 'hmb'" "hmb "
-  expect_contains "source alias brew works" "apps where source = 'brew'" "SOURCE"
+  expect_apps_query "source alias brew is accepted" "apps where source = 'brew'"
 
   summary_out="$(osql "summary apps")"
   if printf '%s' "$summary_out" | grep -qF "Installed apps"; then
