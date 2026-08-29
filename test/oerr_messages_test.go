@@ -1,6 +1,9 @@
 package test
 
 import (
+	"errors"
+	"fmt"
+	"io/fs"
 	"testing"
 
 	"github.com/farhapartex/osql/internal/oerr"
@@ -253,5 +256,27 @@ func TestEveryKindHasAName(t *testing.T) {
 		if k.String() == "unknown" {
 			t.Errorf("Kind(%d) has no name; every declared kind needs one", int(k))
 		}
+	}
+}
+
+func TestReasonExplainsCommonFailures(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want string
+	}{
+		{"permission", fs.ErrPermission, "permission denied"},
+		{"already there", fs.ErrExist, "something is already there"},
+		{"gone", fs.ErrNotExist, "it is no longer there"},
+		{"wrapped permission", fmt.Errorf("remove x: %w", fs.ErrPermission), "permission denied"},
+		{"anything else", errors.New("disk on fire"), "disk on fire"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := oerr.Reason(tt.err); got != tt.want {
+				t.Errorf("Reason() = %q, want %q", got, tt.want)
+			}
+		})
 	}
 }

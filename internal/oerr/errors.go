@@ -3,6 +3,7 @@ package oerr
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"strings"
 )
 
@@ -387,6 +388,19 @@ func AppsUnavailable(reason string) *Error {
 
 func CannotDeleteApps() *Error {
 	return newError(KindCannotDeleteApps, "I won't uninstall apps — removing one properly also means its settings and background helpers, which I can't do safely. Use your system's own uninstaller.")
+}
+
+func Reason(err error) string {
+	switch {
+	case errors.Is(err, fs.ErrPermission):
+		return "permission denied"
+	case errors.Is(err, fs.ErrExist):
+		return "something is already there"
+	case errors.Is(err, fs.ErrNotExist):
+		return "it is no longer there"
+	default:
+		return err.Error()
+	}
 }
 
 func joinWithAnd(items []string) string {
