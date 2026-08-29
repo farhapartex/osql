@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 
 	"github.com/farhapartex/osql/internal/apps"
@@ -16,6 +17,7 @@ import (
 	"github.com/farhapartex/osql/internal/reader"
 	"github.com/farhapartex/osql/internal/shell"
 	"github.com/farhapartex/osql/internal/state"
+	"github.com/farhapartex/osql/internal/uninstall"
 	"github.com/farhapartex/osql/internal/vfs"
 )
 
@@ -42,6 +44,41 @@ func restoreOnSignal(input reader.LineReader) {
 	}()
 }
 
+func removeOsql(opts cli.Options) error {
+	stateRoot, err := state.DefaultRoot()
+	if err != nil {
+		return err
+	}
+
+	remover := uninstall.New(uninstall.Options{
+		Files:        uninstall.SystemFiles(),
+		LocateBinary: os.Executable,
+		StateRoot:    stateRoot,
+	})
+
+	plan, err := remover.Plan(opts.KeepData)
+	if err != nil {
+		return err
+	}
+
+	renderer := output.NewUninstall()
+	if !opts.Confirmed {
+		if err := renderer.Preview(os.Stdout, plan); err != nil {
+			return err
+		}
+
+		answer, err := reader.NewBasic(os.Stdin, os.Stdout, nil).ReadLine(output.UninstallPrompt)
+		if err != nil || strings.TrimSpace(answer) != output.ConfirmWord {
+			return renderer.Cancelled(os.Stdout)
+		}
+	}
+
+	if err := remover.Commit(plan); err != nil {
+		return err
+	}
+	return renderer.Result(os.Stdout, plan)
+}
+
 func run(args []string) error {
 	opts, err := cli.Parse(args)
 	if err != nil {
@@ -55,6 +92,8 @@ func run(args []string) error {
 	case cli.CommandHelp:
 		fmt.Fprintln(os.Stdout, cli.Usage)
 		return nil
+	case cli.CommandUninstall:
+		return removeOsql(opts)
 	}
 
 	home, err := os.UserHomeDir()

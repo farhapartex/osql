@@ -3,6 +3,7 @@ package oerr
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"strings"
 )
 
@@ -60,6 +61,10 @@ const (
 	KindRefuseDeleteHere
 	KindCannotChangeDir
 	KindPwdTakesNoPath
+	KindBinaryNotFound
+	KindInstalledByPackageManager
+	KindCannotRemoveBinary
+	KindCannotRemoveData
 )
 
 var kindNames = map[Kind]string{
@@ -114,6 +119,11 @@ var kindNames = map[Kind]string{
 	KindRefuseDeleteHere:     "refuse_delete_here",
 	KindCannotChangeDir:      "cannot_change_dir",
 	KindPwdTakesNoPath:       "pwd_takes_no_path",
+
+	KindBinaryNotFound:            "binary_not_found",
+	KindInstalledByPackageManager: "installed_by_package_manager",
+	KindCannotRemoveBinary:        "cannot_remove_binary",
+	KindCannotRemoveData:          "cannot_remove_data",
 }
 
 func (k Kind) String() string {
@@ -387,6 +397,35 @@ func AppsUnavailable(reason string) *Error {
 
 func CannotDeleteApps() *Error {
 	return newError(KindCannotDeleteApps, "I won't uninstall apps — removing one properly also means its settings and background helpers, which I can't do safely. Use your system's own uninstaller.")
+}
+
+func BinaryNotFound() *Error {
+	return newError(KindBinaryNotFound, "I couldn't work out where the osql binary lives, so I won't guess at what to delete. Find it with \"which osql\" and remove that file yourself.")
+}
+
+func InstalledByPackageManager(manager, command string) *Error {
+	return newError(KindInstalledByPackageManager, "osql was installed by %s, so deleting the file would leave %s's records out of step. Run: %s", manager, manager, command)
+}
+
+func CannotRemoveBinary(path string) *Error {
+	return newError(KindCannotRemoveBinary, "I don't have permission to remove '%s', and I won't ask for it. Run this yourself:\n\n  sudo rm '%s'", path, path)
+}
+
+func CannotRemoveData(path, reason string) *Error {
+	return newError(KindCannotRemoveData, "I couldn't remove '%s': %s. Nothing was removed, so osql still works.", path, reason)
+}
+
+func Reason(err error) string {
+	switch {
+	case errors.Is(err, fs.ErrPermission):
+		return "permission denied"
+	case errors.Is(err, fs.ErrExist):
+		return "something is already there"
+	case errors.Is(err, fs.ErrNotExist):
+		return "it is no longer there"
+	default:
+		return err.Error()
+	}
 }
 
 func joinWithAnd(items []string) string {

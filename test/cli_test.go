@@ -22,6 +22,11 @@ func TestParseValidInvocations(t *testing.T) {
 		{"init", []string{"init"}, cli.Options{Command: cli.CommandInit}},
 		{"init reinit", []string{"init", "--reinit"}, cli.Options{Command: cli.CommandInit, Reinit: true}},
 		{"no history", []string{"--no-history"}, cli.Options{Command: cli.CommandShell, NoHistory: true}},
+		{"uninstall", []string{"uninstall"}, cli.Options{Command: cli.CommandUninstall}},
+		{"uninstall keeping data", []string{"uninstall", "--keep-data"}, cli.Options{Command: cli.CommandUninstall, KeepData: true}},
+		{"uninstall without asking", []string{"uninstall", "--yes"}, cli.Options{Command: cli.CommandUninstall, Confirmed: true}},
+		{"uninstall short yes", []string{"uninstall", "-y"}, cli.Options{Command: cli.CommandUninstall, Confirmed: true}},
+		{"uninstall both flags", []string{"uninstall", "--keep-data", "--yes"}, cli.Options{Command: cli.CommandUninstall, KeepData: true, Confirmed: true}},
 	}
 
 	for _, tt := range tests {
@@ -51,6 +56,13 @@ func TestParseRejectsInvalidInvocations(t *testing.T) {
 		{"single dash", []string{"-"}},
 		{"double dash", []string{"--"}},
 		{"empty string arg", []string{""}},
+		{"keep-data without uninstall", []string{"--keep-data"}},
+		{"keep-data with init", []string{"init", "--keep-data"}},
+		{"yes without uninstall", []string{"--yes"}},
+		{"dir with uninstall", []string{"uninstall", "--dir", "/tmp"}},
+		{"no-history with uninstall", []string{"uninstall", "--no-history"}},
+		{"reinit with uninstall", []string{"uninstall", "--reinit"}},
+		{"version with uninstall", []string{"uninstall", "--version"}},
 	}
 
 	for _, tt := range tests {
@@ -96,6 +108,7 @@ func TestCommandString(t *testing.T) {
 		{cli.CommandVersion, "version"},
 		{cli.CommandInit, "init"},
 		{cli.CommandHelp, "help"},
+		{cli.CommandUninstall, "uninstall"},
 		{cli.Command(99), "unknown"},
 	}
 
@@ -107,9 +120,35 @@ func TestCommandString(t *testing.T) {
 }
 
 func TestUsageMentionsEveryFlag(t *testing.T) {
-	for _, flag := range []string{"init", "--reinit", "--no-history", "--version", "--help"} {
+	for _, flag := range []string{"init", "uninstall", "--reinit", "--no-history", "--keep-data", "--yes", "--version", "--help"} {
 		if !strings.Contains(cli.Usage, flag) {
 			t.Errorf("usage text does not document %q", flag)
 		}
+	}
+}
+
+func TestUsageMentionsEveryCommandTheShellOffers(t *testing.T) {
+	for _, command := range []string{"files from", "folders from", "count(", "open ", "new file", "summary from", "apps", "summary apps", "delete file", "cd ", "pwd"} {
+		if !strings.Contains(cli.Usage, command) {
+			t.Errorf("usage text does not mention %q", command)
+		}
+	}
+}
+
+func TestUsageDoesNotClaimPathsAreContained(t *testing.T) {
+	for _, stale := range []string{"inside the root", "all mean the same folder"} {
+		if strings.Contains(cli.Usage, stale) {
+			t.Errorf("usage still describes the reversed containment model: %q", stale)
+		}
+	}
+}
+
+func TestParseUninstallAcceptsRepeatedFlags(t *testing.T) {
+	got, err := cli.Parse([]string{"uninstall", "--yes", "--yes", "--keep-data", "--keep-data"})
+	if err != nil {
+		t.Fatalf("repeating a flag should be harmless, got %v", err)
+	}
+	if !got.Confirmed || !got.KeepData {
+		t.Errorf("flags not set: %+v", got)
 	}
 }

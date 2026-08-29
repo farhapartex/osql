@@ -13,7 +13,7 @@ Looking something up? Jump straight to the page you need.
 
 | Page | What it covers |
 | --- | --- |
-| [Installation](installation.md) | What you need, how to build it, and how to put it on your PATH |
+| [Installation](installation.md) | What you need, how to build it, how to put it on your PATH, and how to remove it |
 | [Queries](queries.md) | Your first query, the four things you can ask for, and how paths and `cd` work |
 | [Shell and flags](shell.md) | Moving around with `cd`, built-in commands, editing keys, and flags |
 

@@ -15,6 +15,9 @@ The folder is created the first time you start `osql`. To remove every trace:
 rm -rf ~/.osql
 ```
 
+`osql uninstall` removes this folder too, unless you pass `--keep-data`. See
+[Installation](installation.md#removing-it).
+
 ## Nothing is sent anywhere
 
 `osql` has no network code at all. It cannot phone home, because there is nothing

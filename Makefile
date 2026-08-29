@@ -10,7 +10,7 @@ RELEASE_LDFLAGS := -s -w $(LDFLAGS)
 
 PLATFORMS := darwin/arm64 darwin/amd64 linux/amd64 linux/arm64
 
-.PHONY: all build install test e2e bench vet fmt fmt-check cross dist version version-check release-check clean
+.PHONY: all build install uninstall test e2e bench vet fmt fmt-check cross dist version version-check release-check clean
 
 all: fmt-check vet test build e2e
 
@@ -19,6 +19,11 @@ build:
 
 install:
 	go install -ldflags "$(LDFLAGS)" .
+
+uninstall:
+	@target="$$(command -v $(BINARY) 2>/dev/null)"; \
+	if [ -z "$$target" ]; then echo "$(BINARY) is not on your PATH; nothing to remove"; exit 0; fi; \
+	"$$target" uninstall
 
 test:
 	go test ./... -race

@@ -1,6 +1,9 @@
 package test
 
 import (
+	"errors"
+	"fmt"
+	"io/fs"
 	"testing"
 
 	"github.com/farhapartex/osql/internal/oerr"
@@ -249,9 +252,86 @@ func TestKindString(t *testing.T) {
 }
 
 func TestEveryKindHasAName(t *testing.T) {
-	for k := oerr.KindFolderMissing; k <= oerr.KindUnclosedQuote; k++ {
+	for k := oerr.KindFolderMissing; k <= oerr.KindCannotRemoveData; k++ {
 		if k.String() == "unknown" {
 			t.Errorf("Kind(%d) has no name; every declared kind needs one", int(k))
+		}
+	}
+}
+
+func TestUninstallMessages(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want string
+	}{
+		{
+			"binary not found",
+			oerr.BinaryNotFound(),
+			`I couldn't work out where the osql binary lives, so I won't guess at what to delete. Find it with "which osql" and remove that file yourself.`,
+		},
+		{
+			"installed by a package manager",
+			oerr.InstalledByPackageManager("Homebrew", "brew uninstall osql"),
+			"osql was installed by Homebrew, so deleting the file would leave Homebrew's records out of step. Run: brew uninstall osql",
+		},
+		{
+			"binary is not writable",
+			oerr.CannotRemoveBinary("/usr/local/bin/osql"),
+			"I don't have permission to remove '/usr/local/bin/osql', and I won't ask for it. Run this yourself:\n\n  sudo rm '/usr/local/bin/osql'",
+		},
+		{
+			"data could not be removed",
+			oerr.CannotRemoveData("/home/me/.osql", "permission denied"),
+			"I couldn't remove '/home/me/.osql': permission denied. Nothing was removed, so osql still works.",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.err.Error(); got != tt.want {
+				t.Errorf("got:\n%s\nwant:\n%s", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestReasonExplainsCommonFailures(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want string
+	}{
+		{"permission", fs.ErrPermission, "permission denied"},
+		{"already there", fs.ErrExist, "something is already there"},
+		{"gone", fs.ErrNotExist, "it is no longer there"},
+		{"wrapped permission", fmt.Errorf("remove x: %w", fs.ErrPermission), "permission denied"},
+		{"anything else", errors.New("disk on fire"), "disk on fire"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := oerr.Reason(tt.err); got != tt.want {
+				t.Errorf("Reason() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestUninstallMessagesNameTheirKind(t *testing.T) {
+	tests := []struct {
+		err  error
+		kind oerr.Kind
+	}{
+		{oerr.BinaryNotFound(), oerr.KindBinaryNotFound},
+		{oerr.InstalledByPackageManager("Nix", "nix profile remove osql"), oerr.KindInstalledByPackageManager},
+		{oerr.CannotRemoveBinary("/bin/osql"), oerr.KindCannotRemoveBinary},
+		{oerr.CannotRemoveData("/x/.osql", "busy"), oerr.KindCannotRemoveData},
+	}
+
+	for _, tt := range tests {
+		if !oerr.Is(tt.err, tt.kind) {
+			t.Errorf("%v is not %s", tt.err, tt.kind)
 		}
 	}
 }

@@ -110,12 +110,5 @@ func report(w io.Writer, input string, alsoMade []string) error {
 }
 
 func reasonFor(err error) string {
-	switch {
-	case errors.Is(err, fs.ErrPermission):
-		return "permission denied"
-	case errors.Is(err, fs.ErrExist):
-		return "something is already there"
-	default:
-		return err.Error()
-	}
+	return oerr.Reason(err)
 }
