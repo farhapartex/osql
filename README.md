@@ -75,13 +75,22 @@ Type `help` to see everything, and `exit` or `Ctrl+D` to leave.
 Other ways to install — Go, a tarball, or from source — are in
 [Installation](docs/installation.md).
 
+To remove it again:
+
+```bash
+osql uninstall
+```
+
+That shows you exactly what it will delete and waits for you to type `yes`. Add
+`--keep-data` to keep your command history at `~/.osql`.
+
 ## Documentation
 
 Start here:
 
 | Page | What it covers |
 | --- | --- |
-| [Installation](docs/installation.md) | What you need, building, and your PATH |
+| [Installation](docs/installation.md) | What you need, building, your PATH, and removing it |
 | [Queries](docs/queries.md) | Your first query, and how paths work |
 | [Filtering](docs/filtering.md) | The `where` clause: names, types, and wildcards |
 | [Error messages](docs/errors.md) | What a message means and how to fix it |
