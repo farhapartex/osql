@@ -113,3 +113,19 @@ func TestUsageMentionsEveryFlag(t *testing.T) {
 		}
 	}
 }
+
+func TestUsageMentionsEveryCommandTheShellOffers(t *testing.T) {
+	for _, command := range []string{"files from", "folders from", "count(", "open ", "new file", "summary from", "apps", "summary apps", "delete file", "cd ", "pwd"} {
+		if !strings.Contains(cli.Usage, command) {
+			t.Errorf("usage text does not mention %q", command)
+		}
+	}
+}
+
+func TestUsageDoesNotClaimPathsAreContained(t *testing.T) {
+	for _, stale := range []string{"inside the root", "all mean the same folder"} {
+		if strings.Contains(cli.Usage, stale) {
+			t.Errorf("usage still describes the reversed containment model: %q", stale)
+		}
+	}
+}

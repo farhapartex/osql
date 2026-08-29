@@ -59,11 +59,17 @@ queries:
   new file '<path>' data='hello'            make a file, optionally with content
   new folder '<path>'                       make a folder
   summary from '<path>' [recursive]         counts, sizes and types at a glance
+  apps [with size] [where ...]              the apps installed on this machine
+  summary apps                              your installed apps, at a glance
   delete file '<path>'                      move one file to the trash
   delete files from '<path>' where ...      move matching files to the trash
 
-Every path is resolved inside the root, so 'Documents', '/Documents' and
-'~/Documents' all mean the same folder.`
+in the shell:
+  cd '<path>'                               move to another folder
+  pwd                                       show which folder you are in
+
+Paths mean what they mean in a terminal: 'Documents' is inside the folder you
+are in, '/etc' is absolute, and '~' is your home folder.`
 
 func Parse(args []string) (Options, error) {
 	opts := Options{Command: CommandShell}
