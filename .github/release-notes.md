@@ -24,6 +24,8 @@ sha256sum -c checksums.txt      # shasum -a 256 -c on macOS
 
 Listing and filtering files and folders, counting, folder summaries, installed apps, reading text files, creating files and folders, deleting to the trash with a preview and a typed confirmation, moving around with `cd`, and arrow-key line editing with history.
 
+Changed your mind? `osql uninstall` removes the program and `~/.osql`, after showing you exactly what it will delete. It never asks for `sudo`, and `--keep-data` keeps your command history.
+
 Queries read like sentences, so there is no flag order to get wrong:
 
 ```bash
