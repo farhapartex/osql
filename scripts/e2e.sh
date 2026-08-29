@@ -743,6 +743,77 @@ exit
   expect_contains "summary apps refuses where" "summary apps where source = 'hmb'" "A summary covers everything"
   expect_contains "folder summary still works" "summary from 'docs'" "WHAT" "COUNT"
 
+  section "uninstall"
+
+  fresh_install() {
+    local dir="$1"
+    rm -rf "$dir"
+    mkdir -p "$dir"
+    cp "$BIN" "$dir/osql"
+    rm -rf "$HOME/.osql"
+    "$dir/osql" init >/dev/null 2>&1
+  }
+
+  UNINSTALL_DIR="$WORK/uninstall/bin"
+
+  fresh_install "$UNINSTALL_DIR"
+  cancel_out="$(printf 'no\n' | "$UNINSTALL_DIR/osql" uninstall 2>&1)"
+  for want in "This will remove:" "the osql binary" "your history and system notes" "Total:" "Cancelled. Nothing was removed."; do
+    printf '%s' "$cancel_out" | grep -qF -- "$want" \
+      && pass "preview says: $want" \
+      || fail "preview says: $want" "missing from the preview" "$cancel_out"
+  done
+  [ -x "$UNINSTALL_DIR/osql" ] && pass "cancelling keeps the binary" || fail "cancelling keeps the binary" "binary is gone"
+  [ -d "$HOME/.osql" ] && pass "cancelling keeps the state folder" || fail "cancelling keeps the state folder" "state folder is gone"
+
+  fresh_install "$UNINSTALL_DIR"
+  confirm_out="$(printf 'yes\n' | "$UNINSTALL_DIR/osql" uninstall 2>&1)"
+  printf '%s' "$confirm_out" | grep -qF "osql has been removed" \
+    && pass "confirming reports the removal" \
+    || fail "confirming reports the removal" "no closing message" "$confirm_out"
+  [ ! -e "$UNINSTALL_DIR/osql" ] && pass "confirming removes the binary" || fail "confirming removes the binary" "binary is still there"
+  [ ! -e "$HOME/.osql" ] && pass "confirming removes the state folder" || fail "confirming removes the state folder" "state folder is still there"
+
+  fresh_install "$UNINSTALL_DIR"
+  keep_out="$("$UNINSTALL_DIR/osql" uninstall --keep-data --yes 2>&1)"
+  [ ! -e "$UNINSTALL_DIR/osql" ] && pass "--keep-data still removes the binary" || fail "--keep-data still removes the binary" "binary is still there"
+  [ -d "$HOME/.osql" ] && pass "--keep-data keeps the state folder" || fail "--keep-data keeps the state folder" "state folder was removed"
+  printf '%s' "$keep_out" | grep -qF "Your notes are still at" \
+    && pass "--keep-data says where the notes are" \
+    || fail "--keep-data says where the notes are" "no pointer to the folder" "$keep_out"
+
+  fresh_install "$UNINSTALL_DIR"
+  "$UNINSTALL_DIR/osql" uninstall --yes >/dev/null 2>&1
+  [ ! -e "$UNINSTALL_DIR/osql" ] && pass "--yes needs no typed confirmation" || fail "--yes needs no typed confirmation" "binary is still there"
+
+  fresh_install "$UNINSTALL_DIR"
+  chmod 500 "$UNINSTALL_DIR"
+  locked_out="$("$UNINSTALL_DIR/osql" uninstall --yes 2>&1)"
+  chmod 700 "$UNINSTALL_DIR"
+  printf '%s' "$locked_out" | grep -qF "sudo rm '$UNINSTALL_DIR/osql'" \
+    && pass "an unwritable folder prints the exact sudo line" \
+    || fail "an unwritable folder prints the exact sudo line" "no sudo line" "$locked_out"
+  printf '%s' "$locked_out" | grep -qF "I won't ask for it" \
+    && pass "osql never escalates by itself" \
+    || fail "osql never escalates by itself" "no refusal to escalate" "$locked_out"
+  [ -x "$UNINSTALL_DIR/osql" ] && pass "a refused uninstall removes nothing" || fail "a refused uninstall removes nothing" "binary is gone"
+
+  BREW_DIR="$WORK/brew/Cellar/osql/0.1.0/bin"
+  fresh_install "$BREW_DIR"
+  brew_out="$("$BREW_DIR/osql" uninstall --yes 2>&1)"
+  printf '%s' "$brew_out" | grep -qF "brew uninstall osql" \
+    && pass "a Homebrew install points at brew" \
+    || fail "a Homebrew install points at brew" "no brew hint" "$brew_out"
+  [ -x "$BREW_DIR/osql" ] && pass "a Homebrew install is left alone" || fail "a Homebrew install is left alone" "binary was removed"
+
+  expect_cmd "uninstall flags need uninstall" 1 "$BIN" --keep-data
+  expect_cmd_contains "--keep-data explains where it belongs" "osql uninstall" "$BIN" --keep-data
+  expect_cmd "--yes needs uninstall" 1 "$BIN" --yes
+  expect_cmd "uninstall takes no --dir" 1 "$BIN" uninstall --dir /tmp
+  expect_cmd_contains "--help lists uninstall" "osql uninstall" "$BIN" --help
+
+  rm -rf "$HOME/.osql"
+
   section "summary"
   printf '  %s%d passed%s' "$GREEN" "$PASS" "$OFF"
   if [ "$FAIL" -gt 0 ]; then
