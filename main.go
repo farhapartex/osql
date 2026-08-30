@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -33,14 +34,39 @@ func main() {
 	}
 }
 
-func restoreOnSignal(input reader.LineReader) {
+type interruptible interface {
+	Interrupt() bool
+}
+
+func leaveCleanly(input reader.LineReader, store io.Closer) {
+	input.Close()
+	if store != nil {
+		store.Close()
+	}
+	os.Exit(130)
+}
+
+func restoreOnSignal(input reader.LineReader, store io.Closer) {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGTERM, syscall.SIGHUP)
 
 	go func() {
 		<-signals
-		input.Close()
-		os.Exit(130)
+		leaveCleanly(input, store)
+	}()
+}
+
+func stopQueryOnInterrupt(app interruptible, input reader.LineReader, store io.Closer) {
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGINT)
+
+	go func() {
+		for range signals {
+			if app.Interrupt() {
+				continue
+			}
+			leaveCleanly(input, store)
+		}
 	}()
 }
 
@@ -155,7 +181,7 @@ func run(args []string) error {
 
 	input, interactive := reader.New(os.Stdin, os.Stdout, history)
 	defer input.Close()
-	restoreOnSignal(input)
+	restoreOnSignal(input, store)
 
 	app := shell.New(shell.Config{
 		Reader:        input,
@@ -176,6 +202,8 @@ func run(args []string) error {
 		Version:       version,
 		Commit:        commit,
 	})
+
+	stopQueryOnInterrupt(app, input, store)
 
 	return app.Run()
 }

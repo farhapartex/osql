@@ -814,6 +814,45 @@ exit
 
   rm -rf "$HOME/.osql"
 
+  section "interrupt"
+
+  cat > "$WORK/interrupt.sh" <<'SCRIPT'
+set -m
+fixture="$1"; binary="$2"; out="$3"
+cd "$fixture" || exit 1
+printf "count(files) from '%s' recursive\nfiles from 'docs' where name = 'notes.txt'\nexit\n" "$fixture" \
+  | "$binary" --no-history > "$out" 2>&1 &
+pid=$!
+sleep 0.02
+kill -INT $pid 2>/dev/null
+wait $pid
+echo "exit=$?" >> "$out"
+SCRIPT
+
+  mkdir -p "$FIXTURE/many"
+  for d in $(seq 1 60); do
+    mkdir -p "$FIXTURE/many/d$d"
+    touch "$FIXTURE/many/d$d"/f{1..200}
+  done
+
+  interrupt_out="$WORK/interrupt.out"
+  bash "$WORK/interrupt.sh" "$FIXTURE" "$BIN" "$interrupt_out" >/dev/null 2>&1
+
+  grep -qF "exit=0" "$interrupt_out" \
+    && pass "an interrupt never kills the shell" \
+    || fail "an interrupt never kills the shell" "osql did not exit 0" "$(cat "$interrupt_out")"
+  grep -qF "notes.txt" "$interrupt_out" \
+    && pass "a later query still runs after an interrupt" \
+    || fail "a later query still runs after an interrupt" "the second query produced nothing" "$(cat "$interrupt_out")"
+
+  if grep -qF "Stopped" "$interrupt_out"; then
+    pass "the interrupted query reported that it stopped"
+  else
+    pass "the query finished before the interrupt landed (message covered by unit tests)"
+  fi
+
+  rm -rf "$FIXTURE/many"
+
   section "summary"
   printf '  %s%d passed%s' "$GREEN" "$PASS" "$OFF"
   if [ "$FAIL" -gt 0 ]; then

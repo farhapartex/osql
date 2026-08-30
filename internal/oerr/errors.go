@@ -65,6 +65,7 @@ const (
 	KindInstalledByPackageManager
 	KindCannotRemoveBinary
 	KindCannotRemoveData
+	KindQueryStopped
 )
 
 var kindNames = map[Kind]string{
@@ -124,6 +125,7 @@ var kindNames = map[Kind]string{
 	KindInstalledByPackageManager: "installed_by_package_manager",
 	KindCannotRemoveBinary:        "cannot_remove_binary",
 	KindCannotRemoveData:          "cannot_remove_data",
+	KindQueryStopped:              "query_stopped",
 }
 
 func (k Kind) String() string {
@@ -426,6 +428,13 @@ func Reason(err error) string {
 	default:
 		return err.Error()
 	}
+}
+
+func QueryStopped(found int) *Error {
+	if found <= 0 {
+		return newError(KindQueryStopped, "Stopped. Nothing had matched yet.")
+	}
+	return newError(KindQueryStopped, "Stopped after %d matches. Narrow the folder or add a where clause to make it quicker.", found)
 }
 
 func joinWithAnd(items []string) string {
