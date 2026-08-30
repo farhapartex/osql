@@ -140,9 +140,9 @@ func (s *Shell) Interrupt() bool {
 	return true
 }
 
-func stoppedEarly(err error, found int) error {
+func stoppedEarly(err error, found, scanned int) error {
 	if errors.Is(err, context.Canceled) {
-		return oerr.QueryStopped(found)
+		return oerr.QueryStopped(found, scanned)
 	}
 	return err
 }
@@ -175,14 +175,21 @@ func (s *Shell) runQuery(line string) error {
 	ctx := s.beginQuery()
 	defer s.endQuery()
 
+	progress := &scanProgress{}
+	if s.cfg.Editing {
+		progress.out = s.cfg.Err
+	}
+	ctx = engine.WithProgress(ctx, progress.report)
+	defer progress.erase()
+
 	if deleter, ok := executor.(engine.Deleter); ok {
-		return s.runDelete(ctx, deleter, stmt)
+		return s.runDelete(ctx, deleter, stmt, progress)
 	}
 
 	if summarizer, ok := executor.(engine.AppSummarizer); ok && stmt.Verb == query.VerbSummary {
 		summary, err := summarizer.SummarizeApps(ctx, stmt)
 		if err != nil {
-			return stoppedEarly(err, 0)
+			return stoppedEarly(err, 0, progress.scanned)
 		}
 		return s.cfg.AppSummary.Render(s.cfg.Out, summary)
 	}
@@ -190,7 +197,7 @@ func (s *Shell) runQuery(line string) error {
 	if lister, ok := executor.(engine.AppLister); ok && stmt.Verb != query.VerbCount {
 		report, err := lister.ListApps(ctx, stmt)
 		if err != nil {
-			return stoppedEarly(err, 0)
+			return stoppedEarly(err, 0, progress.scanned)
 		}
 		if len(report.Apps) == 0 {
 			if len(stmt.Predicates) == 0 {
@@ -206,18 +213,18 @@ func (s *Shell) runQuery(line string) error {
 	if summarizer, ok := executor.(engine.Summarizer); ok {
 		summary, err := summarizer.Summarize(ctx, stmt)
 		if err != nil {
-			return stoppedEarly(err, 0)
+			return stoppedEarly(err, 0, progress.scanned)
 		}
 		return s.cfg.Summary.Render(s.cfg.Out, summary)
 	}
 
 	if content, ok := executor.(engine.ContentExecutor); ok {
-		return stoppedEarly(content.WriteContent(ctx, stmt, s.cfg.Out), 0)
+		return stoppedEarly(content.WriteContent(ctx, stmt, s.cfg.Out), 0, progress.scanned)
 	}
 
 	sink := &engine.SliceSink{}
 	if err := executor.Execute(ctx, stmt, sink); err != nil {
-		return stoppedEarly(err, len(sink.Rows))
+		return stoppedEarly(err, len(sink.Rows), progress.scanned)
 	}
 
 	if stmt.Verb == query.VerbCount {
@@ -236,10 +243,10 @@ func (s *Shell) runQuery(line string) error {
 	return s.cfg.Renderer.Render(s.cfg.Out, sink.Rows)
 }
 
-func (s *Shell) runDelete(ctx context.Context, deleter engine.Deleter, stmt *query.Statement) error {
+func (s *Shell) runDelete(ctx context.Context, deleter engine.Deleter, stmt *query.Statement, progress *scanProgress) error {
 	plan, err := deleter.Plan(ctx, stmt)
 	if err != nil {
-		return stoppedEarly(err, 0)
+		return stoppedEarly(err, 0, progress.scanned)
 	}
 	if plan.IsEmpty() {
 		return s.cfg.Delete.Nothing(s.cfg.Out)
