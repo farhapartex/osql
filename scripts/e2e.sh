@@ -851,6 +851,17 @@ SCRIPT
     pass "the query finished before the interrupt landed (message covered by unit tests)"
   fi
 
+  progress_out="$WORK/progress.out"
+  printf "count(files) from '%s' recursive\nexit\n" "$FIXTURE" \
+    | (cd "$FIXTURE" && "$BIN" --no-history) >"$progress_out" 2>"$WORK/progress.err"
+
+  [ ! -s "$WORK/progress.err" ] \
+    && pass "a piped session prints no progress" \
+    || fail "a piped session prints no progress" "stderr was not empty" "$(cat "$WORK/progress.err")"
+  grep -qv "scanned" "$progress_out" \
+    && pass "progress never reaches stdout" \
+    || fail "progress never reaches stdout" "found progress in the results" "$(cat "$progress_out")"
+
   rm -rf "$FIXTURE/many"
 
   section "summary"

@@ -103,6 +103,20 @@ walk through your history.
 Pressing ↑ then editing the recalled line works as you would expect. Pressing ↓
 back past the newest entry brings back whatever you had half-typed.
 
+### While a long query runs
+
+A search over a large folder shows a running count so you can see it is working:
+
+```
+osql > files from '~' recursive
+scanned 51200…
+```
+
+That line goes to the error stream, not the results, so piping or redirecting
+`osql` gives you clean output with no progress mixed in. It also only appears
+when you are typing at the prompt — a script or a pipe never sees it. When the
+query finishes, the line is erased and the table takes its place.
+
 ### Stopping a query that is taking too long
 
 A recursive search over a large folder can take a while. Press **Ctrl+C** to
