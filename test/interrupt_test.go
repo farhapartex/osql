@@ -128,24 +128,27 @@ func TestASecondQueryRunsAfterAnInterrupt(t *testing.T) {
 
 func TestQueryStoppedMessages(t *testing.T) {
 	tests := []struct {
-		name  string
-		found int
-		want  string
+		name    string
+		found   int
+		scanned int
+		want    string
 	}{
-		{"nothing found", 0, "Stopped. Nothing had matched yet."},
-		{"negative is treated as nothing", -1, "Stopped. Nothing had matched yet."},
-		{"some found", 12, "Stopped after 12 matches. Narrow the folder or add a where clause to make it quicker."},
+		{"nothing seen at all", 0, 0, "Stopped. Nothing had matched yet."},
+		{"negative is treated as nothing", -1, 0, "Stopped. Nothing had matched yet."},
+		{"some found", 12, 900, "Stopped after 12 matches. Narrow the folder or add a where clause to make it quicker."},
+		{"looked but matched nothing", 0, 4096, "Stopped after looking at 4096 items, none of which matched. Narrow the folder to make it quicker."},
+		{"matches win over the scan count", 3, 4096, "Stopped after 3 matches. Narrow the folder or add a where clause to make it quicker."},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := oerr.QueryStopped(tt.found).Error(); got != tt.want {
+			if got := oerr.QueryStopped(tt.found, tt.scanned).Error(); got != tt.want {
 				t.Errorf("got:\n%s\nwant:\n%s", got, tt.want)
 			}
 		})
 	}
 
-	if !oerr.Is(oerr.QueryStopped(1), oerr.KindQueryStopped) {
+	if !oerr.Is(oerr.QueryStopped(1, 1), oerr.KindQueryStopped) {
 		t.Error("QueryStopped does not carry its kind")
 	}
 }
