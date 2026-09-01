@@ -132,7 +132,7 @@ The query stops in the middle. Finish the condition.
 
 ## Filters
 
-**`I don't know the field "extension". I understand: name, name_like, type`**
+**`I don't know the field "extension". I understand: name, name_like, type, size`**
 
 That is not a field you can filter on. The message lists the ones you can, and
 the list depends on what you are asking for — `files` adds `size`, `folders`

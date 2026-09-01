@@ -583,7 +583,7 @@ exit
   expect_line "missing target" "from 'docs'" 'I need "files", "folders", or "all" to start — for example: files from '"'"'Documents'"'"''
   expect_line "missing from" "files 'docs'" 'I need "from" before the folder — for example: files from '"'"'Documents'"'"''
   expect_line "missing path" "files from" 'I need a folder after "from" — for example: files from '"'"'Documents'"'"''
-  expect_line "unknown field" "files from 'docs' where extension = 'txt'" 'I don'"'"'t know the field "extension". I understand: name, name_like, type'
+  expect_line "unknown field" "files from 'docs' where extension = 'txt'" 'I don'"'"'t know the field "extension". I understand: name, name_like, type, size'
   expect_line "unknown field lists count(child) for folders" "folders from 'docs' where extension = 'txt'" 'I don'"'"'t know the field "extension". I understand: name, name_like, type, count(child)'
   expect_contains "wrong operator for field" "files from 'docs' where name < 'b'" '"name" only works with = and !=.'
   expect_line "count(child) on files" "files from 'docs' where count(child) > 1" "count(child) describes folders, not files. Try: folders from 'Documents' where count(child) > 10"
@@ -817,39 +817,33 @@ exit
   section "interrupt"
 
   cat > "$WORK/interrupt.sh" <<'SCRIPT'
-set -m
-fixture="$1"; binary="$2"; out="$3"
-cd "$fixture" || exit 1
-printf "count(files) from '%s' recursive\nfiles from 'docs' where name = 'notes.txt'\nexit\n" "$fixture" \
-  | "$binary" --no-history > "$out" 2>&1 &
+binary="$1"; out="$2"; pipe="$3"
+mkfifo "$pipe"
+"$binary" --no-history < "$pipe" > "$out" 2>&1 &
 pid=$!
-sleep 0.02
+exec 3>"$pipe"
+printf "count(files) from '/usr' recursive\n" >&3
+sleep 0.15
 kill -INT $pid 2>/dev/null
+sleep 0.25
+printf "files from 'docs' where name = 'notes.txt'\nexit\n" >&3
+exec 3>&-
 wait $pid
 echo "exit=$?" >> "$out"
 SCRIPT
 
-  mkdir -p "$FIXTURE/many"
-  for d in $(seq 1 60); do
-    mkdir -p "$FIXTURE/many/d$d"
-    touch "$FIXTURE/many/d$d"/f{1..200}
-  done
-
   interrupt_out="$WORK/interrupt.out"
-  bash "$WORK/interrupt.sh" "$FIXTURE" "$BIN" "$interrupt_out" >/dev/null 2>&1
+  (cd "$FIXTURE" && bash "$WORK/interrupt.sh" "$BIN" "$interrupt_out" "$WORK/in") >/dev/null 2>&1
 
   grep -qF "exit=0" "$interrupt_out" \
     && pass "an interrupt never kills the shell" \
     || fail "an interrupt never kills the shell" "osql did not exit 0" "$(cat "$interrupt_out")"
+  grep -qF "Stopped" "$interrupt_out" \
+    && pass "the interrupted query says it stopped" \
+    || fail "the interrupted query says it stopped" "no stopped message" "$(cat "$interrupt_out")"
   grep -qF "notes.txt" "$interrupt_out" \
-    && pass "a later query still runs after an interrupt" \
-    || fail "a later query still runs after an interrupt" "the second query produced nothing" "$(cat "$interrupt_out")"
-
-  if grep -qF "Stopped" "$interrupt_out"; then
-    pass "the interrupted query reported that it stopped"
-  else
-    pass "the query finished before the interrupt landed (message covered by unit tests)"
-  fi
+    && pass "a query typed after an interrupt still runs" \
+    || fail "a query typed after an interrupt still runs" "the later query produced nothing" "$(cat "$interrupt_out")"
 
   progress_out="$WORK/progress.out"
   printf "count(files) from '%s' recursive\nexit\n" "$FIXTURE" \
@@ -862,7 +856,24 @@ SCRIPT
     && pass "progress never reaches stdout" \
     || fail "progress never reaches stdout" "found progress in the results" "$(cat "$progress_out")"
 
-  rm -rf "$FIXTURE/many"
+  section "size"
+
+  expect_names "size finds the big files" "files from 'src/big' where size > 0" \
+    "f1.txt f10.txt f11.txt f2.txt f3.txt f4.txt f5.txt f6.txt f7.txt f8.txt f9.txt"
+  expect_contains "size accepts a unit" "files from 'docs' where size < 1kb" "notes.txt"
+  expect_contains "size accepts an uppercase unit" "files from 'docs' where size < 1KB" "notes.txt"
+  expect_contains "size accepts a decimal" "files from 'docs' where size < 1.5kb" "notes.txt"
+  expect_contains "size accepts a quoted value with a space" "files from 'docs' where size < '1 kb'" "notes.txt"
+  expect_contains "size combines with type" "files from 'docs' where type = 'txt' and size < 1kb" "notes.txt"
+  expect_line "size rejects nonsense" "files from 'docs' where size > 'abc'" \
+    'I don'"'"'t understand the size "abc". Write a number with an optional unit — for example: size > 10mb'
+  expect_line "size rejects an unknown unit" "files from 'docs' where size > 10xb" \
+    'I don'"'"'t understand the size "10xb". Write a number with an optional unit — for example: size > 10mb'
+  expect_contains "size refuses an enormous number" "files from 'docs' where size > 99999999tb" \
+    "bigger number than I can work with"
+  expect_contains "size does not apply to folders yet" "folders from 'docs' where size > 1kb" \
+    '"size" doesn'"'"'t work with "folders"'
+  expect_contains "nothing is that big" "files from 'docs' where size > 1gb" "No files matched."
 
   section "summary"
   printf '  %s%d passed%s' "$GREEN" "$PASS" "$OFF"
