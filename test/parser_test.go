@@ -191,7 +191,7 @@ func TestParseUnknownFieldListsRegisteredFields(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected an error")
 	}
-	want := `I don't know the field "extension". I understand: name, name_like, type, size`
+	want := `I don't know the field "extension". I understand: name, name_like, type, size, modified`
 	if err.Error() != want {
 		t.Errorf("\n got: %s\nwant: %s", err.Error(), want)
 	}
@@ -200,7 +200,7 @@ func TestParseUnknownFieldListsRegisteredFields(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected an error")
 	}
-	want = `I don't know the field "extension". I understand: name, name_like, type, count(child)`
+	want = `I don't know the field "extension". I understand: name, name_like, type, modified, count(child)`
 	if err.Error() != want {
 		t.Errorf("\n got: %s\nwant: %s", err.Error(), want)
 	}

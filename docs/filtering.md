@@ -17,6 +17,7 @@ files from 'Documents' where type = 'txt'
 - [By pattern](#by-pattern)
 - [By type](#by-type)
 - [By size](#by-size)
+- [By date](#by-date)
 - [By how full a folder is](#by-how-full-a-folder-is)
 - [Combining filters](#combining-filters)
 - [Filtering while going deep](#filtering-while-going-deep)
@@ -30,9 +31,10 @@ files from 'Documents' where type = 'txt'
 | `name_like` | the name, with wildcards | `=` `!=` |
 | `type` | the file extension | `=` `!=` |
 | `size` | how big a file is | `=` `!=` `<` `>` `<=` `>=` |
+| `modified` | when it last changed | `=` `!=` `<` `>` `<=` `>=` |
 | `count(child)` | how many items are inside a folder | `=` `!=` `<` `>` `<=` `>=` |
 
-Asking for [apps](apps.md) instead of files swaps the last three for `version`,
+Asking for [apps](apps.md) instead of files swaps the last four for `version`,
 `version_like`, `source`, `id`, and `id_like`. osql tells you when a field does
 not fit what you asked for, and lists the ones that do.
 
@@ -105,6 +107,39 @@ files from 'Downloads' where size > '100 mb'     # also fine
 `size` is about files. Folders show `—` in the SIZE column, because working out
 how big a folder is means adding up everything inside it, so asking
 `folders … where size > …` tells you the field does not fit.
+
+## By date
+
+`modified` is when a file or folder last changed. You can write the date out, or
+describe it in words:
+
+```bash
+files from 'Downloads' where modified = 'today'
+files from 'Documents' where modified > '7 days ago'
+files from '~' recursive where modified < '2025-01-01'
+```
+
+The words osql understands are `today`, `yesterday`, and `N days ago`, along
+with `weeks`, `months` and `years`. Written dates look like `2026-01-31`, and
+you can add a time: `'2026-01-31 14:30'`.
+
+A date on its own means **the whole of that day**, which is usually what you
+mean:
+
+```bash
+files from 'src' where modified = '2026-01-31'    # anything changed that day
+files from 'src' where modified > '2026-01-31'    # 1 February onwards
+files from 'src' where modified < '2026-01-31'    # 30 January and earlier
+files from 'src' where modified >= '2026-01-31'   # that day, and after
+files from 'src' where modified <= '2026-01-31'   # that day, and before
+```
+
+Add a time and it means that exact minute instead, so
+`modified > '2026-01-31 14:30'` is everything changed after half past two that
+afternoon.
+
+Dates are read in your own time zone, the same one the MODIFIED column shows,
+so `'today'` means today where you are.
 
 ## By how full a folder is
 

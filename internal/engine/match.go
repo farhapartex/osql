@@ -41,6 +41,7 @@ func DefaultFields(fsys vfs.FileSystem) *FieldRegistry {
 		NameLikeField{},
 		TypeField{},
 		SizeField{},
+		NewModifiedField(nil),
 		NewCountChildField(fsys),
 		VersionField{},
 		VersionLikeField{},

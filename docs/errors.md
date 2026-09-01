@@ -132,7 +132,7 @@ The query stops in the middle. Finish the condition.
 
 ## Filters
 
-**`I don't know the field "extension". I understand: name, name_like, type, size`**
+**`I don't know the field "extension". I understand: name, name_like, type, size, modified`**
 
 That is not a field you can filter on. The message lists the ones you can, and
 the list depends on what you are asking for — `files` adds `size`, `folders`
@@ -162,6 +162,14 @@ You used `<`, `>`, or similar on a text field. Those only work on `size` and
 The value after `size` was not a number. Write the number with the unit attached
 — `10mb`, `500kb`, `2gb` — or put it in quotes if you want a space: `'10 mb'`.
 The units are `b`, `kb`, `mb`, `gb` and `tb`.
+
+---
+
+**`I don't understand the date "someday". Try a date like '2026-01-31', or something like 'today', 'yesterday', or '7 days ago'.`**
+
+The value after `modified` was not a date osql recognises. Write it as
+`2026-01-31`, add a time with `'2026-01-31 14:30'`, or use words: `today`,
+`yesterday`, `7 days ago`, `2 weeks ago`, `3 months ago`, `1 year ago`.
 
 ---
 

@@ -39,7 +39,9 @@ func (e Entry) Name() string {
 type Value struct {
 	Text   string
 	Number int64
+	Upper  int64
 	IsNum  bool
+	IsSpan bool
 }
 
 type RowSink interface {

@@ -583,8 +583,8 @@ exit
   expect_line "missing target" "from 'docs'" 'I need "files", "folders", or "all" to start — for example: files from '"'"'Documents'"'"''
   expect_line "missing from" "files 'docs'" 'I need "from" before the folder — for example: files from '"'"'Documents'"'"''
   expect_line "missing path" "files from" 'I need a folder after "from" — for example: files from '"'"'Documents'"'"''
-  expect_line "unknown field" "files from 'docs' where extension = 'txt'" 'I don'"'"'t know the field "extension". I understand: name, name_like, type, size'
-  expect_line "unknown field lists count(child) for folders" "folders from 'docs' where extension = 'txt'" 'I don'"'"'t know the field "extension". I understand: name, name_like, type, count(child)'
+  expect_line "unknown field" "files from 'docs' where extension = 'txt'" 'I don'"'"'t know the field "extension". I understand: name, name_like, type, size, modified'
+  expect_line "unknown field lists count(child) for folders" "folders from 'docs' where extension = 'txt'" 'I don'"'"'t know the field "extension". I understand: name, name_like, type, modified, count(child)'
   expect_contains "wrong operator for field" "files from 'docs' where name < 'b'" '"name" only works with = and !=.'
   expect_line "count(child) on files" "files from 'docs' where count(child) > 1" "count(child) describes folders, not files. Try: folders from 'Documents' where count(child) > 10"
   expect_line "count(child) needs a number" "folders from 'src' where count(child) > 'many'" "count(child) needs a number — for example: count(child) > 10"
@@ -874,6 +874,26 @@ SCRIPT
   expect_contains "size does not apply to folders yet" "folders from 'docs' where size > 1kb" \
     '"size" doesn'"'"'t work with "folders"'
   expect_contains "nothing is that big" "files from 'docs' where size > 1gb" "No files matched."
+
+  section "modified"
+
+  expect_contains "modified finds today's files" "files from 'docs' where modified = 'today'" "notes.txt"
+  expect_contains "modified accepts a relative date" "files from 'docs' where modified > '7 days ago'" "notes.txt"
+  expect_contains "modified accepts yesterday" "files from 'docs' where modified > 'yesterday'" "notes.txt"
+  expect_contains "modified accepts weeks" "files from 'docs' where modified > '2 weeks ago'" "notes.txt"
+  expect_contains "modified accepts months" "files from 'docs' where modified > '3 months ago'" "notes.txt"
+  expect_contains "modified accepts years" "files from 'docs' where modified > '1 year ago'" "notes.txt"
+  expect_contains "modified accepts a written date" "files from 'docs' where modified > '2020-01-01'" "notes.txt"
+  expect_contains "modified accepts a date and time" "files from 'docs' where modified > '2020-01-01 09:30'" "notes.txt"
+  expect_contains "modified works on folders" "folders from '.' where modified > '1 year ago'" "docs"
+  expect_contains "modified combines with type" "files from 'docs' where type = 'txt' and modified = 'today'" "notes.txt"
+  expect_contains "an old date matches nothing" "files from 'docs' where modified < '2000-01-01'" "No files matched."
+  expect_line "modified rejects a word it does not know" "files from 'docs' where modified = 'someday'" \
+    'I don'"'"'t understand the date "someday". Try a date like '"'"'2026-01-31'"'"', or something like '"'"'today'"'"', '"'"'yesterday'"'"', or '"'"'7 days ago'"'"'.'
+  expect_contains "modified rejects a half-written phrase" "files from 'docs' where modified > '7 days'" \
+    "I don't understand the date"
+  expect_contains "modified rejects an impossible date" "files from 'docs' where modified > '2026-13-01'" \
+    "I don't understand the date"
 
   section "summary"
   printf '  %s%d passed%s' "$GREEN" "$PASS" "$OFF"
