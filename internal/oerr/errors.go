@@ -66,6 +66,8 @@ const (
 	KindCannotRemoveBinary
 	KindCannotRemoveData
 	KindQueryStopped
+	KindBadSizeValue
+	KindSizeTooLarge
 )
 
 var kindNames = map[Kind]string{
@@ -126,6 +128,8 @@ var kindNames = map[Kind]string{
 	KindCannotRemoveBinary:        "cannot_remove_binary",
 	KindCannotRemoveData:          "cannot_remove_data",
 	KindQueryStopped:              "query_stopped",
+	KindBadSizeValue:              "bad_size_value",
+	KindSizeTooLarge:              "size_too_large",
 }
 
 func (k Kind) String() string {
@@ -438,6 +442,14 @@ func QueryStopped(found, scanned int) *Error {
 		return newError(KindQueryStopped, "Stopped after looking at %d items, none of which matched. Narrow the folder to make it quicker.", scanned)
 	}
 	return newError(KindQueryStopped, "Stopped. Nothing had matched yet.")
+}
+
+func BadSizeValue(got string) *Error {
+	return newError(KindBadSizeValue, "I don't understand the size %q. Write a number with an optional unit — for example: size > 10mb", got)
+}
+
+func SizeTooLarge(got string) *Error {
+	return newError(KindSizeTooLarge, "%q is a bigger number than I can work with. The largest size I understand is about 8000000tb.", got)
 }
 
 func joinWithAnd(items []string) string {
