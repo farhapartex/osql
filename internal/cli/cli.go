@@ -61,6 +61,7 @@ queries:
   all from '<path>'                         one level, everything
   files from '<path>' recursive             the whole subtree
   files from '<path>' where type = 'txt'    filtered
+  files from '<path>' where size > 10mb     filtered by size
   count(files) from '<path>'                how many, instead of which
   open '<path>'                             print a text file
   new file '<path>' data='hello'            make a file, optionally with content

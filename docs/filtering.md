@@ -16,6 +16,7 @@ files from 'Documents' where type = 'txt'
 - [By name](#by-name)
 - [By pattern](#by-pattern)
 - [By type](#by-type)
+- [By size](#by-size)
 - [By how full a folder is](#by-how-full-a-folder-is)
 - [Combining filters](#combining-filters)
 - [Filtering while going deep](#filtering-while-going-deep)
@@ -28,9 +29,10 @@ files from 'Documents' where type = 'txt'
 | `name` | the whole file name | `=` `!=` |
 | `name_like` | the name, with wildcards | `=` `!=` |
 | `type` | the file extension | `=` `!=` |
+| `size` | how big a file is | `=` `!=` `<` `>` `<=` `>=` |
 | `count(child)` | how many items are inside a folder | `=` `!=` `<` `>` `<=` `>=` |
 
-Asking for [apps](apps.md) instead of files swaps the last two for `version`,
+Asking for [apps](apps.md) instead of files swaps the last three for `version`,
 `version_like`, `source`, `id`, and `id_like`. osql tells you when a field does
 not fit what you asked for, and lists the ones that do.
 
@@ -76,6 +78,33 @@ all from 'Documents' where type = 'folder'
 ```
 
 Whatever you see in the TYPE column, you can paste back into a query.
+
+## By size
+
+`size` is how big a file is, in bytes unless you add a unit:
+
+```bash
+files from 'Downloads' where size > 100mb
+files from 'Documents' where size < 1kb
+files from '~' recursive where size >= 1gb
+```
+
+The units are `b`, `kb`, `mb`, `gb` and `tb`, and they are not case
+sensitive, so `10MB` and `10mb` are the same. Each step is 1024, matching the
+sizes in the SIZE column, so a file the table shows as `1.2 MB` does match
+`size > 1mb`. Decimals work too: `size > 1.5gb`.
+
+Attach the unit to the number. If you would rather leave a space, put the whole
+value in quotes:
+
+```bash
+files from 'Downloads' where size > 100mb        # fine
+files from 'Downloads' where size > '100 mb'     # also fine
+```
+
+`size` is about files. Folders show `—` in the SIZE column, because working out
+how big a folder is means adding up everything inside it, so asking
+`folders … where size > …` tells you the field does not fit.
 
 ## By how full a folder is
 
