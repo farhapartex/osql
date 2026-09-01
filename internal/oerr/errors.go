@@ -65,6 +65,10 @@ const (
 	KindInstalledByPackageManager
 	KindCannotRemoveBinary
 	KindCannotRemoveData
+	KindQueryStopped
+	KindBadSizeValue
+	KindSizeTooLarge
+	KindBadTimeValue
 )
 
 var kindNames = map[Kind]string{
@@ -124,6 +128,10 @@ var kindNames = map[Kind]string{
 	KindInstalledByPackageManager: "installed_by_package_manager",
 	KindCannotRemoveBinary:        "cannot_remove_binary",
 	KindCannotRemoveData:          "cannot_remove_data",
+	KindQueryStopped:              "query_stopped",
+	KindBadSizeValue:              "bad_size_value",
+	KindSizeTooLarge:              "size_too_large",
+	KindBadTimeValue:              "bad_time_value",
 }
 
 func (k Kind) String() string {
@@ -426,6 +434,28 @@ func Reason(err error) string {
 	default:
 		return err.Error()
 	}
+}
+
+func QueryStopped(found, scanned int) *Error {
+	if found > 0 {
+		return newError(KindQueryStopped, "Stopped after %d matches. Narrow the folder or add a where clause to make it quicker.", found)
+	}
+	if scanned > 0 {
+		return newError(KindQueryStopped, "Stopped after looking at %d items, none of which matched. Narrow the folder to make it quicker.", scanned)
+	}
+	return newError(KindQueryStopped, "Stopped. Nothing had matched yet.")
+}
+
+func BadSizeValue(got string) *Error {
+	return newError(KindBadSizeValue, "I don't understand the size %q. Write a number with an optional unit — for example: size > 10mb", got)
+}
+
+func SizeTooLarge(got string) *Error {
+	return newError(KindSizeTooLarge, "%q is a bigger number than I can work with. The largest size I understand is about 8000000tb.", got)
+}
+
+func BadTimeValue(got string) *Error {
+	return newError(KindBadTimeValue, "I don't understand the date %q. Try a date like '2026-01-31', or something like 'today', 'yesterday', or '7 days ago'.", got)
 }
 
 func joinWithAnd(items []string) string {

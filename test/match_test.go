@@ -73,7 +73,7 @@ func TestFieldRegistryNamesFollowDeclarationOrder(t *testing.T) {
 
 	got := r.Names()
 	want := []string{
-		"name", "name_like", "type", "count(child)",
+		"name", "name_like", "type", "size", "modified", "count(child)",
 		"version", "version_like", "source", "id", "id_like",
 	}
 	if !slices.Equal(got, want) {
@@ -94,12 +94,12 @@ func TestOperatorRegistryOpsFollowDeclarationOrder(t *testing.T) {
 func TestFieldRegistryLookup(t *testing.T) {
 	r := engine.DefaultFields(nil)
 
-	for _, name := range []string{"name", "name_like", "type", "count(child)"} {
+	for _, name := range []string{"name", "name_like", "type", "size", "modified", "count(child)"} {
 		if _, ok := r.Lookup(name); !ok {
 			t.Errorf("Lookup(%q) = false", name)
 		}
 	}
-	for _, name := range []string{"size", "modified", "extension", "", "NAME"} {
+	for _, name := range []string{"extension", "", "NAME"} {
 		if _, ok := r.Lookup(name); ok {
 			t.Errorf("Lookup(%q) = true, want false", name)
 		}

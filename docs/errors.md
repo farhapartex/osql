@@ -132,27 +132,51 @@ The query stops in the middle. Finish the condition.
 
 ## Filters
 
-**`I don't know the field "extension". I understand: name, name_like, type`**
+**`I don't know the field "extension". I understand: name, name_like, type, size, modified`**
 
 That is not a field you can filter on. The message lists the ones you can, and
-the list depends on what you are asking for — `folders` adds `count(child)`, and
-`apps` offers `version`, `source`, and `id`. For extensions the field is called
-`type`.
+the list depends on what you are asking for — `files` adds `size`, `folders`
+adds `count(child)`, and `apps` offers `version`, `source`, and `id`. For
+extensions the field is called `type`.
 
 ---
 
 **`"type" doesn't work with "apps". There you can filter on name, name_like, version, version_like, source, id, and id_like.`**
 
-The field is real, but not for the thing you asked for. `type` and
+The field is real, but not for the thing you asked for. `type`, `size` and
 `count(child)` describe files and folders; `version`, `source`, and `id`
-describe apps. The message lists what does work.
+describe apps. The message lists what does work. `size` is a file field, so
+`folders … where size > …` is refused for the same reason.
 
 ---
 
 **`"name" only works with = and !=. For patterns use name_like: files from 'Documents' where name_like = '%report%'`**
 
-You used `<`, `>`, or similar on a text field. Those only work on
+You used `<`, `>`, or similar on a text field. Those only work on `size` and
 `count(child)`. For loose name matching use `name_like`.
+
+---
+
+**`I don't understand the size "abc". Write a number with an optional unit — for example: size > 10mb`**
+
+The value after `size` was not a number. Write the number with the unit attached
+— `10mb`, `500kb`, `2gb` — or put it in quotes if you want a space: `'10 mb'`.
+The units are `b`, `kb`, `mb`, `gb` and `tb`.
+
+---
+
+**`I don't understand the date "someday". Try a date like '2026-01-31', or something like 'today', 'yesterday', or '7 days ago'.`**
+
+The value after `modified` was not a date osql recognises. Write it as
+`2026-01-31`, add a time with `'2026-01-31 14:30'`, or use words: `today`,
+`yesterday`, `7 days ago`, `2 weeks ago`, `3 months ago`, `1 year ago`.
+
+---
+
+**`"99999999tb" is a bigger number than I can work with. The largest size I understand is about 8000000tb.`**
+
+The size is larger than osql can hold in a number. Use a smaller one; no disk is
+that big yet.
 
 ---
 

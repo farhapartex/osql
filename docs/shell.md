@@ -97,11 +97,42 @@ walk through your history.
 | Ctrl+K | delete from the cursor to the end |
 | Ctrl+U | delete from the start to the cursor |
 | Ctrl+L | clear the screen |
-| Ctrl+C | throw away the line you are typing, stay in the shell |
+| Ctrl+C | throw away the line you are typing, or stop a query that is running |
 | Ctrl+D | leave the shell (or delete forward, if the line is not empty) |
 
 Pressing ↑ then editing the recalled line works as you would expect. Pressing ↓
 back past the newest entry brings back whatever you had half-typed.
+
+### While a long query runs
+
+A search over a large folder shows a running count so you can see it is working:
+
+```
+osql > files from '~' recursive
+scanned 51200…
+```
+
+That line goes to the error stream, not the results, so piping or redirecting
+`osql` gives you clean output with no progress mixed in. It also only appears
+when you are typing at the prompt — a script or a pipe never sees it. When the
+query finishes, the line is erased and the table takes its place.
+
+### Stopping a query that is taking too long
+
+A recursive search over a large folder can take a while. Press **Ctrl+C** to
+stop it. `osql` tells you it stopped, says how much it had found, and gives you
+the prompt back:
+
+```
+osql > files from '~' recursive
+^C
+Stopped after 4193 matches. Narrow the folder or add a where clause to make it quicker.
+osql >
+```
+
+The shell itself keeps running, so nothing is lost. A `delete` is the one thing
+Ctrl+C will not cut in half: once you have typed `yes` and the deleting has
+started, it finishes. Press Ctrl+C before that and nothing is deleted.
 
 ### When it is not available
 

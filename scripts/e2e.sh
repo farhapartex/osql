@@ -583,8 +583,8 @@ exit
   expect_line "missing target" "from 'docs'" 'I need "files", "folders", or "all" to start — for example: files from '"'"'Documents'"'"''
   expect_line "missing from" "files 'docs'" 'I need "from" before the folder — for example: files from '"'"'Documents'"'"''
   expect_line "missing path" "files from" 'I need a folder after "from" — for example: files from '"'"'Documents'"'"''
-  expect_line "unknown field" "files from 'docs' where extension = 'txt'" 'I don'"'"'t know the field "extension". I understand: name, name_like, type'
-  expect_line "unknown field lists count(child) for folders" "folders from 'docs' where extension = 'txt'" 'I don'"'"'t know the field "extension". I understand: name, name_like, type, count(child)'
+  expect_line "unknown field" "files from 'docs' where extension = 'txt'" 'I don'"'"'t know the field "extension". I understand: name, name_like, type, size, modified'
+  expect_line "unknown field lists count(child) for folders" "folders from 'docs' where extension = 'txt'" 'I don'"'"'t know the field "extension". I understand: name, name_like, type, modified, count(child)'
   expect_contains "wrong operator for field" "files from 'docs' where name < 'b'" '"name" only works with = and !=.'
   expect_line "count(child) on files" "files from 'docs' where count(child) > 1" "count(child) describes folders, not files. Try: folders from 'Documents' where count(child) > 10"
   expect_line "count(child) needs a number" "folders from 'src' where count(child) > 'many'" "count(child) needs a number — for example: count(child) > 10"
@@ -813,6 +813,87 @@ exit
   expect_cmd_contains "--help lists uninstall" "osql uninstall" "$BIN" --help
 
   rm -rf "$HOME/.osql"
+
+  section "interrupt"
+
+  cat > "$WORK/interrupt.sh" <<'SCRIPT'
+binary="$1"; out="$2"; pipe="$3"
+mkfifo "$pipe"
+"$binary" --no-history < "$pipe" > "$out" 2>&1 &
+pid=$!
+exec 3>"$pipe"
+printf "count(files) from '/usr' recursive\n" >&3
+sleep 0.15
+kill -INT $pid 2>/dev/null
+sleep 0.25
+printf "files from 'docs' where name = 'notes.txt'\nexit\n" >&3
+exec 3>&-
+wait $pid
+echo "exit=$?" >> "$out"
+SCRIPT
+
+  interrupt_out="$WORK/interrupt.out"
+  (cd "$FIXTURE" && bash "$WORK/interrupt.sh" "$BIN" "$interrupt_out" "$WORK/in") >/dev/null 2>&1
+
+  grep -qF "exit=0" "$interrupt_out" \
+    && pass "an interrupt never kills the shell" \
+    || fail "an interrupt never kills the shell" "osql did not exit 0" "$(cat "$interrupt_out")"
+  grep -qF "Stopped" "$interrupt_out" \
+    && pass "the interrupted query says it stopped" \
+    || fail "the interrupted query says it stopped" "no stopped message" "$(cat "$interrupt_out")"
+  grep -qF "notes.txt" "$interrupt_out" \
+    && pass "a query typed after an interrupt still runs" \
+    || fail "a query typed after an interrupt still runs" "the later query produced nothing" "$(cat "$interrupt_out")"
+
+  progress_out="$WORK/progress.out"
+  printf "count(files) from '%s' recursive\nexit\n" "$FIXTURE" \
+    | (cd "$FIXTURE" && "$BIN" --no-history) >"$progress_out" 2>"$WORK/progress.err"
+
+  [ ! -s "$WORK/progress.err" ] \
+    && pass "a piped session prints no progress" \
+    || fail "a piped session prints no progress" "stderr was not empty" "$(cat "$WORK/progress.err")"
+  grep -qv "scanned" "$progress_out" \
+    && pass "progress never reaches stdout" \
+    || fail "progress never reaches stdout" "found progress in the results" "$(cat "$progress_out")"
+
+  section "size"
+
+  expect_names "size finds the big files" "files from 'src/big' where size > 0" \
+    "f1.txt f10.txt f11.txt f2.txt f3.txt f4.txt f5.txt f6.txt f7.txt f8.txt f9.txt"
+  expect_contains "size accepts a unit" "files from 'docs' where size < 1kb" "notes.txt"
+  expect_contains "size accepts an uppercase unit" "files from 'docs' where size < 1KB" "notes.txt"
+  expect_contains "size accepts a decimal" "files from 'docs' where size < 1.5kb" "notes.txt"
+  expect_contains "size accepts a quoted value with a space" "files from 'docs' where size < '1 kb'" "notes.txt"
+  expect_contains "size combines with type" "files from 'docs' where type = 'txt' and size < 1kb" "notes.txt"
+  expect_line "size rejects nonsense" "files from 'docs' where size > 'abc'" \
+    'I don'"'"'t understand the size "abc". Write a number with an optional unit — for example: size > 10mb'
+  expect_line "size rejects an unknown unit" "files from 'docs' where size > 10xb" \
+    'I don'"'"'t understand the size "10xb". Write a number with an optional unit — for example: size > 10mb'
+  expect_contains "size refuses an enormous number" "files from 'docs' where size > 99999999tb" \
+    "bigger number than I can work with"
+  expect_contains "size does not apply to folders yet" "folders from 'docs' where size > 1kb" \
+    '"size" doesn'"'"'t work with "folders"'
+  expect_contains "nothing is that big" "files from 'docs' where size > 1gb" "No files matched."
+
+  section "modified"
+
+  expect_contains "modified finds today's files" "files from 'docs' where modified = 'today'" "notes.txt"
+  expect_contains "modified accepts a relative date" "files from 'docs' where modified > '7 days ago'" "notes.txt"
+  expect_contains "modified accepts yesterday" "files from 'docs' where modified > 'yesterday'" "notes.txt"
+  expect_contains "modified accepts weeks" "files from 'docs' where modified > '2 weeks ago'" "notes.txt"
+  expect_contains "modified accepts months" "files from 'docs' where modified > '3 months ago'" "notes.txt"
+  expect_contains "modified accepts years" "files from 'docs' where modified > '1 year ago'" "notes.txt"
+  expect_contains "modified accepts a written date" "files from 'docs' where modified > '2020-01-01'" "notes.txt"
+  expect_contains "modified accepts a date and time" "files from 'docs' where modified > '2020-01-01 09:30'" "notes.txt"
+  expect_contains "modified works on folders" "folders from '.' where modified > '1 year ago'" "docs"
+  expect_contains "modified combines with type" "files from 'docs' where type = 'txt' and modified = 'today'" "notes.txt"
+  expect_contains "an old date matches nothing" "files from 'docs' where modified < '2000-01-01'" "No files matched."
+  expect_line "modified rejects a word it does not know" "files from 'docs' where modified = 'someday'" \
+    'I don'"'"'t understand the date "someday". Try a date like '"'"'2026-01-31'"'"', or something like '"'"'today'"'"', '"'"'yesterday'"'"', or '"'"'7 days ago'"'"'.'
+  expect_contains "modified rejects a half-written phrase" "files from 'docs' where modified > '7 days'" \
+    "I don't understand the date"
+  expect_contains "modified rejects an impossible date" "files from 'docs' where modified > '2026-13-01'" \
+    "I don't understand the date"
 
   section "summary"
   printf '  %s%d passed%s' "$GREEN" "$PASS" "$OFF"
