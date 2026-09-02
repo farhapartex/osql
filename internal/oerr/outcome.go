@@ -17,3 +17,7 @@ func NoApps() string {
 func NoAppsMatched() string {
 	return "No apps matched."
 }
+
+func LimitReached(limit int) string {
+	return fmt.Sprintf("Showing the first %d. Raise the limit to see more.", limit)
+}
