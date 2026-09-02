@@ -895,6 +895,24 @@ SCRIPT
   expect_contains "modified rejects an impossible date" "files from 'docs' where modified > '2026-13-01'" \
     "I don't understand the date"
 
+  section "limit"
+
+  expect_names "limit caps the rows" "files from 'src/big' limit 3" "f1.txt f10.txt f11.txt"
+  expect_contains "limit says it bit" "files from 'src/big' limit 3" "Showing the first 3. Raise the limit to see more."
+  expect_absent "a roomy limit says nothing" "files from 'docs' limit 50" "Showing the first"
+  expect_names "limit goes after where" "files from 'docs' where type = 'txt' limit 1" "notes.txt"
+  expect_contains "limit goes after recursive" "files from 'src' recursive limit 2" "2 files"
+  expect_names "limit of one" "files from 'docs' limit 1" "Makefile"
+  expect_line "limit needs a number" "files from 'docs' limit" \
+    '"limit" needs a number — for example: files from '"'"'Documents'"'"' limit 10'
+  expect_line "limit rejects a word" "files from 'docs' limit abc" \
+    '"limit" needs a whole number, not "abc" — for example: limit 10'
+  expect_line "limit rejects zero" "files from 'docs' limit 0" \
+    'A limit of 0 would show nothing. Use 1 or more, or leave the limit off to see everything.'
+  expect_contains "limit rejects a negative" "files from 'docs' limit -2" "would show nothing"
+  expect_contains "count takes no limit" "count(files) from 'docs' limit 5" \
+    "A count is already one number"
+
   section "summary"
   printf '  %s%d passed%s' "$GREEN" "$PASS" "$OFF"
   if [ "$FAIL" -gt 0 ]; then
