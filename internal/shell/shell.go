@@ -223,7 +223,14 @@ func (s *Shell) runQuery(line string) error {
 	}
 
 	sink := &engine.SliceSink{}
-	if err := executor.Execute(ctx, stmt, sink); err != nil {
+	var out engine.RowSink = sink
+	var limited *engine.LimitSink
+	if stmt.Limit > 0 {
+		limited = engine.NewLimitSink(sink, stmt.Limit)
+		out = limited
+	}
+
+	if err := executor.Execute(ctx, stmt, out); err != nil {
 		return stoppedEarly(err, len(sink.Rows), progress.scanned)
 	}
 
@@ -240,7 +247,13 @@ func (s *Shell) runQuery(line string) error {
 		return nil
 	}
 
-	return s.cfg.Renderer.Render(s.cfg.Out, sink.Rows)
+	if err := s.cfg.Renderer.Render(s.cfg.Out, sink.Rows); err != nil {
+		return err
+	}
+	if limited != nil && limited.Filled() {
+		fmt.Fprintln(s.cfg.Out, oerr.LimitReached(stmt.Limit))
+	}
+	return nil
 }
 
 func (s *Shell) runDelete(ctx context.Context, deleter engine.Deleter, stmt *query.Statement, progress *scanProgress) error {
