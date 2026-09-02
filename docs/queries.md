@@ -20,6 +20,7 @@ drop it.
 - [Moving around](#moving-around)
 - [Looking inside subfolders](#looking-inside-subfolders)
 - [Folders that are skipped](#folders-that-are-skipped)
+- [Asking for only the first few](#asking-for-only-the-first-few)
 - [Small conveniences](#small-conveniences)
 - [Special characters in quotes](#special-characters-in-quotes)
 
@@ -125,6 +126,36 @@ Hidden files like `.gitignore` **are** shown — only these folders are skipped.
 
 [`delete`](deleting.md) is the one command that does *not* skip them, so it can
 never tell you a folder is empty while files remain inside.
+
+## Asking for only the first few
+
+`limit` stops after a set number of results:
+
+```bash
+files from 'Downloads' limit 10
+files from '~' recursive where size > 100mb limit 20
+```
+
+It goes at the end, after `recursive` and after `where`.
+
+This is not just tidier output — **osql stops looking as soon as it has
+enough.** On a large folder `limit 10` finishes almost immediately, because the
+search ends at the tenth match instead of reading everything and then throwing
+most of it away.
+
+When the limit is what stopped the search, osql says so, since there may be
+more:
+
+```
+10 files
+Showing the first 10. Raise the limit to see more.
+```
+
+If fewer results than the limit come back, that line does not appear, so you
+know you are seeing everything.
+
+A limit needs to be 1 or more, and it does not go with `count(...)` — a count is
+already a single number, so limiting it would change nothing.
 
 ## Small conveniences
 
