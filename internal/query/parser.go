@@ -1,6 +1,7 @@
 package query
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/farhapartex/osql/internal/oerr"
@@ -26,13 +27,14 @@ const (
 	KeywordAnd       = "and"
 	KeywordCount     = "count"
 	KeywordChild     = "child"
+	KeywordLimit     = "limit"
 )
 
 var singularTargets = []string{"file", "folder"}
 
 var targetNamesInOrder = []string{"all", "files", "folders", "apps"}
 
-var structuralKeywords = []string{KeywordFrom, KeywordRecursive, KeywordWhere, KeywordAnd}
+var structuralKeywords = []string{KeywordFrom, KeywordRecursive, KeywordWhere, KeywordAnd, KeywordLimit}
 
 type PredicateValidator interface {
 	Validate(p Predicate, target Target) error
@@ -163,6 +165,10 @@ func (p stdParser) Parse(tokens []Token) (*Statement, error) {
 		}
 	}
 
+	if err := parseLimit(c, stmt); err != nil {
+		return nil, err
+	}
+
 	if !c.atEOF() {
 		return nil, oerr.UnexpectedInput(c.peek().Value)
 	}
@@ -176,6 +182,33 @@ func (p stdParser) Parse(tokens []Token) (*Statement, error) {
 	}
 
 	return stmt, nil
+}
+
+func parseLimit(c *cursor, stmt *Statement) error {
+	if !c.peek().IsKeyword(KeywordLimit) {
+		return nil
+	}
+	c.next()
+
+	if c.atEOF() {
+		return oerr.MissingLimit()
+	}
+
+	token := c.peek()
+	count, err := strconv.Atoi(strings.TrimSpace(token.Value))
+	if err != nil {
+		return oerr.BadLimit(token.Value)
+	}
+	if count < 1 {
+		return oerr.LimitTooSmall(count)
+	}
+	c.next()
+
+	if stmt.Verb == VerbCount {
+		return oerr.CountTakesNoLimit()
+	}
+	stmt.Limit = count
+	return nil
 }
 
 func parseSummaryApps(c *cursor) (*Statement, error) {

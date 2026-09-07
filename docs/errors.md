@@ -165,6 +165,26 @@ The units are `b`, `kb`, `mb`, `gb` and `tb`.
 
 ---
 
+**`"limit" needs a whole number, not "abc" — for example: limit 10`**
+
+`limit` takes a plain number and nothing else. `limit 10` works; `limit 2.5` and
+`limit abc` do not.
+
+---
+
+**`A limit of 0 would show nothing. Use 1 or more, or leave the limit off to see everything.`**
+
+A limit has to be at least 1. To see every result, leave the limit off entirely.
+
+---
+
+**`A count is already one number, so a limit would change nothing. Drop the limit, or ask for the rows instead: files from 'Documents' limit 10`**
+
+`count(...)` answers with a single number, so there is nothing for a limit to
+trim. Drop it, or ask for the rows themselves.
+
+---
+
 **`I don't understand the date "someday". Try a date like '2026-01-31', or something like 'today', 'yesterday', or '7 days ago'.`**
 
 The value after `modified` was not a date osql recognises. Write it as

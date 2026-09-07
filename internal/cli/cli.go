@@ -63,6 +63,7 @@ queries:
   files from '<path>' where type = 'txt'    filtered
   files from '<path>' where size > 10mb     filtered by size
   files from '<path>' where modified = 'today' filtered by date
+  files from '<path>' limit 10              stop after ten results
   count(files) from '<path>'                how many, instead of which
   open '<path>'                             print a text file
   new file '<path>' data='hello'            make a file, optionally with content

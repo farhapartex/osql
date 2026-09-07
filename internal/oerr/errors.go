@@ -69,6 +69,10 @@ const (
 	KindBadSizeValue
 	KindSizeTooLarge
 	KindBadTimeValue
+	KindMissingLimit
+	KindBadLimit
+	KindLimitTooSmall
+	KindCountTakesNoLimit
 )
 
 var kindNames = map[Kind]string{
@@ -132,6 +136,10 @@ var kindNames = map[Kind]string{
 	KindBadSizeValue:              "bad_size_value",
 	KindSizeTooLarge:              "size_too_large",
 	KindBadTimeValue:              "bad_time_value",
+	KindMissingLimit:              "missing_limit",
+	KindBadLimit:                  "bad_limit",
+	KindLimitTooSmall:             "limit_too_small",
+	KindCountTakesNoLimit:         "count_takes_no_limit",
 }
 
 func (k Kind) String() string {
@@ -456,6 +464,22 @@ func SizeTooLarge(got string) *Error {
 
 func BadTimeValue(got string) *Error {
 	return newError(KindBadTimeValue, "I don't understand the date %q. Try a date like '2026-01-31', or something like 'today', 'yesterday', or '7 days ago'.", got)
+}
+
+func MissingLimit() *Error {
+	return newError(KindMissingLimit, "\"limit\" needs a number — for example: files from 'Documents' limit 10")
+}
+
+func BadLimit(got string) *Error {
+	return newError(KindBadLimit, "\"limit\" needs a whole number, not %q — for example: limit 10", got)
+}
+
+func LimitTooSmall(got int) *Error {
+	return newError(KindLimitTooSmall, "A limit of %d would show nothing. Use 1 or more, or leave the limit off to see everything.", got)
+}
+
+func CountTakesNoLimit() *Error {
+	return newError(KindCountTakesNoLimit, "A count is already one number, so a limit would change nothing. Drop the limit, or ask for the rows instead: files from 'Documents' limit 10")
 }
 
 func joinWithAnd(items []string) string {
