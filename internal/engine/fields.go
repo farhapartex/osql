@@ -127,7 +127,3 @@ func (f CountChildField) Extract(e Entry) (Value, error) {
 	}
 	return Value{Number: int64(len(entries)), IsNum: true}, nil
 }
-
-func (CountChildField) SortKey(r Row) Value {
-	return Value{Number: r.Count, IsNum: true}
-}

@@ -28,16 +28,24 @@ const (
 	KeywordCount     = "count"
 	KeywordChild     = "child"
 	KeywordLimit     = "limit"
+	KeywordSorted    = "sorted"
+	KeywordBy        = "by"
+	KeywordAsc       = "asc"
+	KeywordDesc      = "desc"
 )
 
 var singularTargets = []string{"file", "folder"}
 
 var targetNamesInOrder = []string{"all", "files", "folders", "apps"}
 
-var structuralKeywords = []string{KeywordFrom, KeywordRecursive, KeywordWhere, KeywordAnd, KeywordLimit}
+var structuralKeywords = []string{KeywordFrom, KeywordRecursive, KeywordWhere, KeywordAnd, KeywordSorted, KeywordLimit}
 
 type PredicateValidator interface {
 	Validate(p Predicate, target Target) error
+}
+
+type SortValidator interface {
+	ValidateSort(field string, target Target) error
 }
 
 type stdParser struct {
@@ -165,6 +173,10 @@ func (p stdParser) Parse(tokens []Token) (*Statement, error) {
 		}
 	}
 
+	if err := parseSortedBy(c, stmt); err != nil {
+		return nil, err
+	}
+
 	if err := parseLimit(c, stmt); err != nil {
 		return nil, err
 	}
@@ -179,9 +191,47 @@ func (p stdParser) Parse(tokens []Token) (*Statement, error) {
 				return nil, err
 			}
 		}
+		if sorter, ok := p.validator.(SortValidator); ok && stmt.SortField != "" {
+			if err := sorter.ValidateSort(stmt.SortField, target); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	return stmt, nil
+}
+
+func parseSortedBy(c *cursor, stmt *Statement) error {
+	if !c.peek().IsKeyword(KeywordSorted) {
+		return nil
+	}
+	c.next()
+
+	if !c.peek().IsKeyword(KeywordBy) {
+		return oerr.MissingSortBy(c.peek().Value)
+	}
+	c.next()
+
+	field, err := parseField(c)
+	if err != nil || field == "" {
+		return oerr.MissingSortField()
+	}
+
+	if stmt.Verb == VerbCount {
+		return oerr.CountTakesNoSort()
+	}
+	if stmt.Target == TargetApps {
+		return oerr.AppsNotSortable()
+	}
+
+	stmt.SortField = field
+	if c.peek().IsKeyword(KeywordDesc) {
+		c.next()
+		stmt.SortDesc = true
+	} else if c.peek().IsKeyword(KeywordAsc) {
+		c.next()
+	}
+	return nil
 }
 
 func parseLimit(c *cursor, stmt *Statement) error {
@@ -260,6 +310,10 @@ func parseAppsTail(c *cursor, verb string) (*Statement, error) {
 
 	if c.peek().IsKeyword(KeywordWith) {
 		return nil, oerr.WithSizeComesFirst()
+	}
+
+	if c.peek().IsKeyword(KeywordSorted) {
+		return nil, oerr.AppsNotSortable()
 	}
 
 	if !c.atEOF() {

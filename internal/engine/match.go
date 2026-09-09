@@ -172,6 +172,31 @@ func (c *Compiler) fieldsFor(target query.Target) []string {
 	return names
 }
 
+func (c *Compiler) sortableFor(target query.Target) []string {
+	names := make([]string, 0, len(c.fields.Names()))
+	for _, name := range c.fields.Names() {
+		field, ok := c.fields.Lookup(name)
+		if !ok || !field.AppliesTo(target) {
+			continue
+		}
+		if _, sortable := field.(SortableField); sortable {
+			names = append(names, name)
+		}
+	}
+	return names
+}
+
+func (c *Compiler) ValidateSort(name string, target query.Target) error {
+	field, ok := c.fields.Lookup(name)
+	if !ok || !field.AppliesTo(target) {
+		return oerr.UnsortableField(name, c.sortableFor(target))
+	}
+	if _, sortable := field.(SortableField); !sortable {
+		return oerr.UnsortableField(name, c.sortableFor(target))
+	}
+	return nil
+}
+
 func (c *Compiler) Validate(p query.Predicate, target query.Target) error {
 	field, ok := c.fields.Lookup(p.Field)
 	if !ok {

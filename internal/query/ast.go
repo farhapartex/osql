@@ -80,4 +80,6 @@ type Statement struct {
 	Single         bool
 	WithSize       bool
 	Limit          int
+	SortField      string
+	SortDesc       bool
 }
