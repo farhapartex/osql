@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"container/heap"
 	"context"
 	"slices"
 	"time"
@@ -107,7 +106,7 @@ type summaryCollector struct {
 	folders   int64
 	totalSize int64
 	byType    map[string]*TypeTally
-	largest   *rowHeap
+	largest   *SortSink
 	oldest    time.Time
 	newest    time.Time
 	skipped   []string
@@ -117,7 +116,7 @@ type summaryCollector struct {
 func newSummaryCollector() *summaryCollector {
 	return &summaryCollector{
 		byType:   make(map[string]*TypeTally),
-		largest:  &rowHeap{},
+		largest:  NewSortSink(SizeField{}, true, TopLargest),
 		seenSkip: make(map[string]struct{}),
 	}
 }
@@ -147,20 +146,11 @@ func (c *summaryCollector) Push(row Row) error {
 	tally.Count++
 	tally.Size += row.Size
 
-	c.trackLargest(row)
+	if err := c.largest.Push(row); err != nil {
+		return err
+	}
 	c.trackTimes(row.Modified)
 	return nil
-}
-
-func (c *summaryCollector) trackLargest(row Row) {
-	if c.largest.Len() < TopLargest {
-		heap.Push(c.largest, row)
-		return
-	}
-	if row.Size > (*c.largest)[0].Size {
-		heap.Pop(c.largest)
-		heap.Push(c.largest, row)
-	}
 }
 
 func (c *summaryCollector) trackTimes(t time.Time) {
@@ -202,10 +192,7 @@ func (c *summaryCollector) finish() Summary {
 		types = types[:TopTypes]
 	}
 
-	largest := make([]Row, c.largest.Len())
-	for i := len(largest) - 1; i >= 0; i-- {
-		largest[i] = heap.Pop(c.largest).(Row)
-	}
+	largest := c.largest.Rows()
 
 	return Summary{
 		Files:     c.files,
@@ -218,19 +205,4 @@ func (c *summaryCollector) finish() Summary {
 		Newest:    c.newest,
 		Skipped:   c.skipped,
 	}
-}
-
-type rowHeap []Row
-
-func (h rowHeap) Len() int           { return len(h) }
-func (h rowHeap) Less(i, j int) bool { return h[i].Size < h[j].Size }
-func (h rowHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
-func (h *rowHeap) Push(x any)        { *h = append(*h, x.(Row)) }
-
-func (h *rowHeap) Pop() any {
-	old := *h
-	n := len(old)
-	last := old[n-1]
-	*h = old[:n-1]
-	return last
 }

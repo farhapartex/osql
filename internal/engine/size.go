@@ -85,3 +85,7 @@ func (SizeField) Extract(e Entry) (Value, error) {
 	}
 	return Value{Number: info.Size(), IsNum: true}, nil
 }
+
+func (SizeField) SortKey(r Row) Value {
+	return Value{Number: r.Size, IsNum: true}
+}
