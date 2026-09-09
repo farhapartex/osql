@@ -168,7 +168,8 @@ func run(args []string) error {
 	}
 
 	fsys := vfs.OS()
-	compiler := engine.NewCompiler(engine.DefaultFields(fsys), engine.DefaultOperators())
+	fields := engine.DefaultFields(fsys)
+	compiler := engine.NewCompiler(fields, engine.DefaultOperators())
 	resolver := engine.NewPathResolverAt(fsys, startDir, home)
 	skip := engine.DefaultSkipList()
 	selector := engine.NewSelectExecutor(fsys, resolver, compiler, skip)
@@ -188,6 +189,7 @@ func run(args []string) error {
 		Editing:       interactive,
 		Lexer:         query.NewLexer(),
 		Parser:        query.NewParser(compiler),
+		Fields:        fields,
 		Engine:        engine.NewRegistry(selector, counter, opener, maker, summarizer, remover, lister),
 		Renderer:      output.NewTable(),
 		CountRenderer: output.NewCount(),
