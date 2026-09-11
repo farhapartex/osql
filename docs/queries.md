@@ -20,6 +20,7 @@ drop it.
 - [Moving around](#moving-around)
 - [Looking inside subfolders](#looking-inside-subfolders)
 - [Folders that are skipped](#folders-that-are-skipped)
+- [Putting results in order](#putting-results-in-order)
 - [Asking for only the first few](#asking-for-only-the-first-few)
 - [Small conveniences](#small-conveniences)
 - [Special characters in quotes](#special-characters-in-quotes)
@@ -126,6 +127,49 @@ Hidden files like `.gitignore` **are** shown — only these folders are skipped.
 
 [`delete`](deleting.md) is the one command that does *not* skip them, so it can
 never tell you a folder is empty while files remain inside.
+
+## Putting results in order
+
+`sorted by` orders the results. Ascending is the default; add `desc` to reverse
+it:
+
+```bash
+files from 'Downloads' sorted by size desc
+files from 'Documents' sorted by modified desc
+files from 'src' sorted by name
+```
+
+You can sort by `name`, `type`, `size` and `modified`. `size` is for files, so
+sorting folders by it does not work yet. Files with the same value are ordered
+by name, so the same query always gives the same output.
+
+It goes after `where` and before `limit`. The two together answer the question
+people actually ask:
+
+```bash
+files from '~' recursive sorted by size desc limit 20
+```
+
+That is "the twenty biggest files anywhere under my home folder".
+
+### Sorting looks at everything
+
+Without a sort, `limit 20` stops the search at the twentieth match. **With a
+sort it cannot**, because the biggest file might be the last one found. So a
+sorted query always searches the whole folder, and the limit decides how many of
+the results you keep rather than when to stop looking.
+
+That costs time on a big folder, but the answer is exact: `limit 20` with a sort
+really is the top twenty, not the first twenty that turned up.
+
+If you sort **without** a limit, osql holds up to 10,000 results. Past that it
+says so:
+
+```
+Sorted the first 10000 matches. Add a limit to be sure you are seeing the top.
+```
+
+The rows you get are still genuinely the top ones — only the tail is missing.
 
 ## Asking for only the first few
 

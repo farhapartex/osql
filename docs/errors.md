@@ -165,6 +165,35 @@ The units are `b`, `kb`, `mb`, `gb` and `tb`.
 
 ---
 
+**`I can't sort by "name_like". I can sort by name, type, size, and modified.`**
+
+That field cannot put rows in order. Patterns match, they do not rank, and
+`count(child)` is not carried on a listing row. The message lists what does
+work, and the list depends on what you asked for — `size` is missing for
+`folders`, because folders have no size yet.
+
+---
+
+**`I can't sort apps yet. Ask for them unsorted with "apps", or sort files and folders instead.`**
+
+Sorting works on files and folders. Apps come from a different place and are not
+sortable yet.
+
+---
+
+**`"sorted" needs "by" and a field — for example: files from 'Documents' sorted by size desc`**
+
+The clause is `sorted by <field>`, so `sorted` on its own is incomplete. Add
+`desc` to reverse the order.
+
+---
+
+**`A count is one number, so there is nothing to sort. Drop the sort, or ask for the rows instead: files from 'Documents' sorted by size desc`**
+
+`count(...)` answers with a single number, so ordering it means nothing.
+
+---
+
 **`"limit" needs a whole number, not "abc" — for example: limit 10`**
 
 `limit` takes a plain number and nothing else. `limit 10` works; `limit 2.5` and
