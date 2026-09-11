@@ -913,6 +913,29 @@ SCRIPT
   expect_contains "count takes no limit" "count(files) from 'docs' limit 5" \
     "A count is already one number"
 
+  section "sorted by"
+
+  expect_names "biggest first" "files from 'docs' sorted by size desc limit 1" "secret.txt"
+  expect_names "smallest first" "files from 'docs' sorted by size asc limit 1" "q4-report.txt"
+  expect_names "sorted by name" "files from 'docs' sorted by name limit 2" "Makefile notes.txt"
+  expect_contains "sorted by modified" "files from 'docs' sorted by modified desc limit 1" "1 files"
+  expect_contains "sorted by type" "files from 'docs' sorted by type limit 1" "1 files"
+  expect_contains "sorting goes after where" "files from 'docs' where type = 'txt' sorted by name desc limit 1" "secret.txt"
+  expect_contains "sorting goes after recursive" "files from 'src' recursive sorted by size desc limit 1" "1 files"
+  expect_absent "a sorted limit is exact, so nothing is said" "files from 'docs' sorted by size desc limit 1" "Showing the first"
+  expect_absent "a small sort is not truncated" "files from 'docs' sorted by size desc" "Sorted the first"
+  expect_line "sorted needs by" "files from 'docs' sorted" \
+    '"sorted" needs "by" and a field — for example: files from '"'"'Documents'"'"' sorted by size desc'
+  expect_line "sorted by needs a field" "files from 'docs' sorted by" \
+    '"sorted by" needs a field — for example: sorted by size desc'
+  expect_line "patterns cannot sort" "files from 'docs' sorted by name_like" \
+    'I can'"'"'t sort by "name_like". I can sort by name, type, size, and modified.'
+  expect_contains "folders cannot sort by size yet" "folders from '.' sorted by size" "I can't sort by \"size\""
+  expect_contains "child counts cannot sort" "folders from '.' sorted by count(child)" "I can't sort by \"count(child)\""
+  expect_line "apps cannot sort yet" "apps sorted by name" \
+    'I can'"'"'t sort apps yet. Ask for them unsorted with "apps", or sort files and folders instead.'
+  expect_contains "a count cannot sort" "count(files) from 'docs' sorted by size" "there is nothing to sort"
+
   section "summary"
   printf '  %s%d passed%s' "$GREEN" "$PASS" "$OFF"
   if [ "$FAIL" -gt 0 ]; then
