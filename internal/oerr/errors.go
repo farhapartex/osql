@@ -73,6 +73,11 @@ const (
 	KindBadLimit
 	KindLimitTooSmall
 	KindCountTakesNoLimit
+	KindMissingSortBy
+	KindMissingSortField
+	KindUnsortableField
+	KindAppsNotSortable
+	KindCountTakesNoSort
 )
 
 var kindNames = map[Kind]string{
@@ -140,6 +145,11 @@ var kindNames = map[Kind]string{
 	KindBadLimit:                  "bad_limit",
 	KindLimitTooSmall:             "limit_too_small",
 	KindCountTakesNoLimit:         "count_takes_no_limit",
+	KindMissingSortBy:             "missing_sort_by",
+	KindMissingSortField:          "missing_sort_field",
+	KindUnsortableField:           "unsortable_field",
+	KindAppsNotSortable:           "apps_not_sortable",
+	KindCountTakesNoSort:          "count_takes_no_sort",
 }
 
 func (k Kind) String() string {
@@ -480,6 +490,32 @@ func LimitTooSmall(got int) *Error {
 
 func CountTakesNoLimit() *Error {
 	return newError(KindCountTakesNoLimit, "A count is already one number, so a limit would change nothing. Drop the limit, or ask for the rows instead: files from 'Documents' limit 10")
+}
+
+func MissingSortBy(got string) *Error {
+	if got == "" {
+		return newError(KindMissingSortBy, "\"sorted\" needs \"by\" and a field — for example: files from 'Documents' sorted by size desc")
+	}
+	return newError(KindMissingSortBy, "I need \"by\" after \"sorted\", not %q — for example: sorted by size desc", got)
+}
+
+func MissingSortField() *Error {
+	return newError(KindMissingSortField, "\"sorted by\" needs a field — for example: sorted by size desc")
+}
+
+func UnsortableField(got string, known []string) *Error {
+	if len(known) == 0 {
+		return newError(KindUnsortableField, "I can't sort by %q.", got)
+	}
+	return newError(KindUnsortableField, "I can't sort by %q. I can sort by %s.", got, joinWithAnd(known))
+}
+
+func AppsNotSortable() *Error {
+	return newError(KindAppsNotSortable, "I can't sort apps yet. Ask for them unsorted with \"apps\", or sort files and folders instead.")
+}
+
+func CountTakesNoSort() *Error {
+	return newError(KindCountTakesNoSort, "A count is one number, so there is nothing to sort. Drop the sort, or ask for the rows instead: files from 'Documents' sorted by size desc")
 }
 
 func joinWithAnd(items []string) string {

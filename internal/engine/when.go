@@ -121,3 +121,7 @@ func (ModifiedField) Extract(e Entry) (Value, error) {
 	}
 	return Value{Number: info.ModTime().Unix(), IsNum: true}, nil
 }
+
+func (ModifiedField) SortKey(r Row) Value {
+	return Value{Number: r.Modified.Unix(), IsNum: true}
+}

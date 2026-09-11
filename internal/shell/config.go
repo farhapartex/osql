@@ -15,6 +15,7 @@ type Config struct {
 	Lexer         query.Lexer
 	Parser        query.Parser
 	Engine        *engine.Registry
+	Fields        *engine.FieldRegistry
 	Renderer      output.Renderer
 	CountRenderer output.Renderer
 	Apps          output.AppsRenderer

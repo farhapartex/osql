@@ -225,7 +225,17 @@ func (s *Shell) runQuery(line string) error {
 	sink := &engine.SliceSink{}
 	var out engine.RowSink = sink
 	var limited *engine.LimitSink
-	if stmt.Limit > 0 {
+	var sorted *engine.SortSink
+
+	switch {
+	case stmt.SortField != "":
+		field, ok := s.sortableField(stmt.SortField)
+		if !ok {
+			return oerr.UnsortableField(stmt.SortField, nil)
+		}
+		sorted = engine.NewSortSink(field, stmt.SortDesc, stmt.Limit)
+		out = sorted
+	case stmt.Limit > 0:
 		limited = engine.NewLimitSink(sink, stmt.Limit)
 		out = limited
 	}
@@ -234,11 +244,16 @@ func (s *Shell) runQuery(line string) error {
 		return stoppedEarly(err, len(sink.Rows), progress.scanned)
 	}
 
-	if stmt.Verb == query.VerbCount {
-		return s.cfg.CountRenderer.Render(s.cfg.Out, sink.Rows)
+	rows := sink.Rows
+	if sorted != nil {
+		rows = sorted.Rows()
 	}
 
-	if len(sink.Rows) == 0 {
+	if stmt.Verb == query.VerbCount {
+		return s.cfg.CountRenderer.Render(s.cfg.Out, rows)
+	}
+
+	if len(rows) == 0 {
 		if len(stmt.Predicates) == 0 {
 			fmt.Fprintln(s.cfg.Out, oerr.EmptyFolder(stmt.Path))
 		} else {
@@ -247,13 +262,28 @@ func (s *Shell) runQuery(line string) error {
 		return nil
 	}
 
-	if err := s.cfg.Renderer.Render(s.cfg.Out, sink.Rows); err != nil {
+	if err := s.cfg.Renderer.Render(s.cfg.Out, rows); err != nil {
 		return err
 	}
 	if limited != nil && limited.Filled() {
 		fmt.Fprintln(s.cfg.Out, oerr.LimitReached(stmt.Limit))
 	}
+	if sorted != nil && stmt.Limit == 0 && sorted.Overflowed() {
+		fmt.Fprintln(s.cfg.Out, oerr.SortTruncated(engine.SortCap))
+	}
 	return nil
+}
+
+func (s *Shell) sortableField(name string) (engine.SortableField, bool) {
+	if s.cfg.Fields == nil {
+		return nil, false
+	}
+	field, ok := s.cfg.Fields.Lookup(name)
+	if !ok {
+		return nil, false
+	}
+	sortable, ok := field.(engine.SortableField)
+	return sortable, ok
 }
 
 func (s *Shell) runDelete(ctx context.Context, deleter engine.Deleter, stmt *query.Statement, progress *scanProgress) error {
