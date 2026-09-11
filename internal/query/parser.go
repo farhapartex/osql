@@ -45,7 +45,7 @@ type PredicateValidator interface {
 }
 
 type SortValidator interface {
-	ValidateSort(field string, target Target) error
+	ValidateSort(field string, target Target, measured bool) error
 }
 
 type stdParser struct {
@@ -165,12 +165,31 @@ func (p stdParser) Parse(tokens []Token) (*Statement, error) {
 		stmt.Recursive = true
 	}
 
+	if c.peek().IsKeyword(KeywordWith) {
+		c.next()
+		if !c.peek().IsKeyword(KeywordSize) {
+			return nil, oerr.WithNeedsSize(c.peek().Value)
+		}
+		c.next()
+		if verb == VerbCount {
+			return nil, oerr.CountHasNoSize()
+		}
+		if target == TargetFiles {
+			return nil, oerr.FilesAlreadyHaveSize()
+		}
+		stmt.WithSize = true
+	}
+
 	if c.peek().IsKeyword(KeywordWhere) {
 		c.next()
 		stmt.Predicates, err = parseCondition(c)
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	if c.peek().IsKeyword(KeywordWith) {
+		return nil, oerr.WithSizeComesFirst()
 	}
 
 	if err := parseSortedBy(c, stmt); err != nil {
@@ -192,7 +211,7 @@ func (p stdParser) Parse(tokens []Token) (*Statement, error) {
 			}
 		}
 		if sorter, ok := p.validator.(SortValidator); ok && stmt.SortField != "" {
-			if err := sorter.ValidateSort(stmt.SortField, target); err != nil {
+			if err := sorter.ValidateSort(stmt.SortField, target, stmt.WithSize); err != nil {
 				return nil, err
 			}
 		}

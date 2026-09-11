@@ -89,3 +89,7 @@ func (SizeField) Extract(e Entry) (Value, error) {
 func (SizeField) SortKey(r Row) Value {
 	return Value{Number: r.Size, IsNum: true}
 }
+
+func (SizeField) MeasuredFor(t query.Target) bool {
+	return t == query.TargetFolders || t == query.TargetAll
+}
