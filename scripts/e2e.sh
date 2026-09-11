@@ -937,6 +937,24 @@ SCRIPT
     'I can'"'"'t sort apps yet. Ask for them unsorted with "apps", or sort files and folders instead.'
   expect_contains "a count cannot sort" "count(files) from 'docs' sorted by size" "there is nothing to sort"
 
+  section "folder sizes"
+
+  expect_absent "folders show no size by default" "folders from 'src'" "KB"
+  expect_contains "with size measures a folder" "folders from 'src' with size" "B"
+  expect_names "with size keeps the same folders" "folders from 'src' with size" "big one"
+  expect_contains "with size works on all" "all from 'docs' with size" "notes.txt"
+  expect_names "biggest folder first" "folders from 'src' with size sorted by size desc limit 1" "big"
+  expect_names "smallest folder first" "folders from 'src' with size sorted by size asc limit 1" "one"
+  expect_contains "with size goes after recursive" "folders from '.' recursive with size limit 1" "1 files"
+  expect_line "sorting folders by size needs measuring" "folders from 'src' sorted by size desc" \
+    'To sort folders by size I have to measure them first. Add "with size": folders from '"'"'Documents'"'"' with size sorted by size desc'
+  expect_line "files already have a size" "files from 'docs' with size" \
+    'Files already show their size, so "with size" adds nothing. It is for folders, which have to be added up: folders from '"'"'Documents'"'"' with size'
+  expect_contains "a count has no size" "count(folders) from 'src' with size" "A count has no size column"
+  expect_contains "with size comes before where" "folders from 'src' where name = 'big' with size" \
+    '"with size" goes before "where"'
+  expect_contains "with still needs size" "folders from 'src' with" '"with" needs "size"'
+
   section "summary"
   printf '  %s%d passed%s' "$GREEN" "$PASS" "$OFF"
   if [ "$FAIL" -gt 0 ]; then
