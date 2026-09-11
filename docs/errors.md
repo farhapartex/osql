@@ -340,7 +340,7 @@ osql could not read the folders where apps live.
 
 ---
 
-**`"with" needs "size" — for example: apps with size`**
+**`"with" needs "size" — for example: folders from 'Documents' with size`**
 
 `with` on its own. For apps the only thing that follows it is `size`.
 

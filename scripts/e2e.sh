@@ -709,8 +709,8 @@ exit
     fail "apps with size totals the disk usage" "no output" "$sized_out"
   fi
 
-  expect_line "with needs size" "apps with" '"with" needs "size" — for example: apps with size'
-  expect_line "with rejects other words" "apps with skipped" 'After "apps with" I only know "size", not "skipped".'
+  expect_line "with needs size" "apps with" '"with" needs "size" — for example: folders from '"'"'Documents'"'"' with size'
+  expect_line "with rejects other words" "apps with skipped" 'After "with" I only know "size", not "skipped".'
   expect_line "with size goes before where" "apps where source = 'macos' with size" \
     '"with size" goes before "where" — for example: apps with size where source = '"'"'homebrew'"'"''
   expect_contains "count(apps) refuses with size" "count(apps) with size" "A count has no size column"
@@ -930,7 +930,8 @@ SCRIPT
     '"sorted by" needs a field — for example: sorted by size desc'
   expect_line "patterns cannot sort" "files from 'docs' sorted by name_like" \
     'I can'"'"'t sort by "name_like". I can sort by name, type, size, and modified.'
-  expect_contains "folders cannot sort by size yet" "folders from '.' sorted by size" "I can't sort by \"size\""
+  expect_contains "sorting folders by size asks for with size" "folders from '.' sorted by size" \
+    'To sort folders by size I have to measure them first.'
   expect_contains "child counts cannot sort" "folders from '.' sorted by count(child)" "I can't sort by \"count(child)\""
   expect_line "apps cannot sort yet" "apps sorted by name" \
     'I can'"'"'t sort apps yet. Ask for them unsorted with "apps", or sort files and folders instead.'

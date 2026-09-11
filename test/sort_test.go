@@ -253,7 +253,7 @@ func TestParseSortedByRejections(t *testing.T) {
 		{"a pattern field", "files from 'work' sorted by name_like", oerr.KindUnsortableField},
 		{"an unknown field", "files from 'work' sorted by colour", oerr.KindUnsortableField},
 		{"child count is not sortable", "folders from 'work' sorted by count(child)", oerr.KindUnsortableField},
-		{"size is not for folders", "folders from 'work' sorted by size", oerr.KindUnsortableField},
+		{"folders need measuring first", "folders from 'work' sorted by size", oerr.KindSortNeedsMeasuring},
 		{"apps cannot sort", "apps sorted by name", oerr.KindAppsNotSortable},
 		{"a count cannot sort", "count(files) from 'work' sorted by size", oerr.KindCountTakesNoSort},
 	}

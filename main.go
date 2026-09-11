@@ -190,6 +190,7 @@ func run(args []string) error {
 		Lexer:         query.NewLexer(),
 		Parser:        query.NewParser(compiler),
 		Fields:        fields,
+		FolderSizes:   engine.NewFolderSizer(fsys),
 		Engine:        engine.NewRegistry(selector, counter, opener, maker, summarizer, remover, lister),
 		Renderer:      output.NewTable(),
 		CountRenderer: output.NewCount(),

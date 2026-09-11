@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"strings"
 	"sync"
 
@@ -227,13 +228,18 @@ func (s *Shell) runQuery(line string) error {
 	var limited *engine.LimitSink
 	var sorted *engine.SortSink
 
-	switch {
-	case stmt.SortField != "":
+	if stmt.SortField != "" {
 		field, ok := s.sortableField(stmt.SortField)
 		if !ok {
 			return oerr.UnsortableField(stmt.SortField, nil)
 		}
 		sorted = engine.NewSortSink(field, stmt.SortDesc, stmt.Limit)
+	}
+
+	switch {
+	case stmt.WithSize:
+		out = sink
+	case sorted != nil:
 		out = sorted
 	case stmt.Limit > 0:
 		limited = engine.NewLimitSink(sink, stmt.Limit)
@@ -245,7 +251,25 @@ func (s *Shell) runQuery(line string) error {
 	}
 
 	rows := sink.Rows
-	if sorted != nil {
+	trimmed := false
+
+	if stmt.WithSize {
+		if err := s.measureFolders(ctx, stmt, rows); err != nil {
+			return stoppedEarly(err, len(rows), progress.scanned)
+		}
+		switch {
+		case sorted != nil:
+			for _, row := range rows {
+				if err := sorted.Push(row); err != nil {
+					return err
+				}
+			}
+			rows = sorted.Rows()
+		case stmt.Limit > 0 && len(rows) > stmt.Limit:
+			rows = rows[:stmt.Limit]
+			trimmed = true
+		}
+	} else if sorted != nil {
 		rows = sorted.Rows()
 	}
 
@@ -265,13 +289,27 @@ func (s *Shell) runQuery(line string) error {
 	if err := s.cfg.Renderer.Render(s.cfg.Out, rows); err != nil {
 		return err
 	}
-	if limited != nil && limited.Filled() {
+	if trimmed || (limited != nil && limited.Filled()) {
 		fmt.Fprintln(s.cfg.Out, oerr.LimitReached(stmt.Limit))
 	}
 	if sorted != nil && stmt.Limit == 0 && sorted.Overflowed() {
 		fmt.Fprintln(s.cfg.Out, oerr.SortTruncated(engine.SortCap))
 	}
 	return nil
+}
+
+func (s *Shell) measureFolders(ctx context.Context, stmt *query.Statement, rows []engine.Row) error {
+	if s.cfg.FolderSizes == nil || s.cfg.Resolver == nil {
+		return nil
+	}
+
+	root, err := s.cfg.Resolver.Resolve(stmt.Path)
+	if err != nil {
+		return err
+	}
+	return s.cfg.FolderSizes.Measure(ctx, rows, func(row engine.Row) string {
+		return path.Join(root.FSPath, row.Name)
+	})
 }
 
 func (s *Shell) sortableField(name string) (engine.SortableField, bool) {

@@ -16,6 +16,7 @@ type Config struct {
 	Parser        query.Parser
 	Engine        *engine.Registry
 	Fields        *engine.FieldRegistry
+	FolderSizes   *engine.FolderSizer
 	Renderer      output.Renderer
 	CountRenderer output.Renderer
 	Apps          output.AppsRenderer
