@@ -12,12 +12,13 @@ import (
 var ErrStopWalk = errors.New("stop walk")
 
 type Row struct {
-	Name     string
-	Ext      string
-	Size     int64
-	Modified time.Time
-	IsDir    bool
-	Count    int64
+	Name      string
+	Ext       string
+	Size      int64
+	Modified  time.Time
+	IsDir     bool
+	SizeKnown bool
+	Count     int64
 }
 
 type Entry struct {

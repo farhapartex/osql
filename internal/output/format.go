@@ -51,7 +51,7 @@ func FormatType(row engine.Row) string {
 }
 
 func FormatRowSize(row engine.Row) string {
-	if row.IsDir {
+	if row.IsDir && !row.SizeKnown {
 		return Absent
 	}
 	return FormatSize(row.Size)
