@@ -20,6 +20,7 @@ drop it.
 - [Moving around](#moving-around)
 - [Looking inside subfolders](#looking-inside-subfolders)
 - [Folders that are skipped](#folders-that-are-skipped)
+- [How big is a folder](#how-big-is-a-folder)
 - [Putting results in order](#putting-results-in-order)
 - [Asking for only the first few](#asking-for-only-the-first-few)
 - [Small conveniences](#small-conveniences)
@@ -127,6 +128,45 @@ Hidden files like `.gitignore` **are** shown — only these folders are skipped.
 
 [`delete`](deleting.md) is the one command that does *not* skip them, so it can
 never tell you a folder is empty while files remain inside.
+
+## How big is a folder
+
+Folders show `—` in the SIZE column, because a folder has no size of its own —
+it is whatever is inside it. Add `with size` and osql adds it up:
+
+```bash
+folders from '~' with size
+```
+
+```
+NAME         TYPE    SIZE      MODIFIED
+Documents    folder  4.2 GB    2026-03-01 09:12
+Downloads    folder  18.7 GB   2026-03-02 14:21
+Pictures     folder  61.3 GB   2026-02-11 08:40
+
+3 files
+```
+
+It goes after the path and before `where`, the same place it goes for
+[apps](apps.md).
+
+This is the one query that asks osql to do real work: adding up a folder means
+walking everything inside it. That is why it is something you ask for rather
+than something you always get — a plain `folders from '~'` stays instant.
+
+Put together with sorting, this answers the question people actually have:
+
+```bash
+folders from '~' with size sorted by size desc limit 10
+```
+
+That is "the ten biggest folders in my home directory".
+
+Sorting folders by size needs `with size`, because until they are measured there
+is nothing to sort. osql says so if you forget.
+
+A folder osql cannot fully read keeps its `—` rather than reporting a total it
+does not know, and it is left out of the count.
 
 ## Putting results in order
 
