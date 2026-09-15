@@ -20,6 +20,25 @@ Or download a tarball below, unpack it, and move `osql` onto your `PATH`. Every 
 sha256sum -c checksums.txt      # shasum -a 256 -c on macOS
 ```
 
+## New in this release
+
+**Find what is using your disk.** Filter by `size` and by `modified`, put results in order with `sorted by`, and stop early with `limit`:
+
+```bash
+files from '~' recursive where size > 100mb sorted by size desc limit 20
+files from 'Downloads' where modified > '7 days ago'
+```
+
+**Folders can be measured.** A folder has no size of its own, so `with size` adds up what is inside it. Together with sorting, that answers the obvious question:
+
+```bash
+folders from '~' with size sorted by size desc limit 10
+```
+
+**Long searches behave properly.** A search over a big folder shows a running count while it works, and **Ctrl+C now stops the query and gives you the prompt back** instead of closing osql.
+
+`limit` on its own ends the search as soon as it has enough, so it is quick as well as tidy. Add a sort and osql looks at everything before answering, because the biggest file might be the last one found — so `sorted by size desc limit 20` really is the top twenty.
+
 ## What works
 
 Listing and filtering files and folders, counting, folder summaries, installed apps, reading text files, creating files and folders, deleting to the trash with a preview and a typed confirmation, moving around with `cd`, and arrow-key line editing with history.
@@ -30,7 +49,9 @@ Queries read like sentences, so there is no flag order to get wrong:
 
 ```bash
 files from 'Documents' where type = 'pdf'
-folders from '.' where count(child) > 5
+files from '~' recursive where size > 100mb sorted by size desc limit 20
+folders from '~' with size sorted by size desc limit 10
+files from 'Downloads' where modified > '7 days ago'
 summary from 'Downloads' recursive
 apps with size
 count(files) from 'src' recursive
