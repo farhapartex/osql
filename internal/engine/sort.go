@@ -3,12 +3,18 @@ package engine
 import (
 	"container/heap"
 	"strings"
+
+	"github.com/farhapartex/osql/internal/query"
 )
 
 const SortCap = 10000
 
 type SortableField interface {
 	SortKey(r Row) Value
+}
+
+type MeasuredField interface {
+	MeasuredFor(t query.Target) bool
 }
 
 func lessValue(a, b Value) bool {

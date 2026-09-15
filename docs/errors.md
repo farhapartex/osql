@@ -174,6 +174,20 @@ work, and the list depends on what you asked for — `size` is missing for
 
 ---
 
+**`To sort folders by size I have to measure them first. Add "with size": folders from 'Documents' with size sorted by size desc`**
+
+Folders have no size until osql adds up what is inside them, so there is nothing
+to sort by yet. Add `with size` and the sort works.
+
+---
+
+**`Files already show their size, so "with size" adds nothing. It is for folders, which have to be added up: folders from 'Documents' with size`**
+
+Every file already shows its size in the SIZE column. `with size` exists for
+folders, whose size has to be worked out.
+
+---
+
 **`I can't sort apps yet. Ask for them unsorted with "apps", or sort files and folders instead.`**
 
 Sorting works on files and folders. Apps come from a different place and are not
@@ -340,7 +354,7 @@ osql could not read the folders where apps live.
 
 ---
 
-**`"with" needs "size" — for example: apps with size`**
+**`"with" needs "size" — for example: folders from 'Documents' with size`**
 
 `with` on its own. For apps the only thing that follows it is `size`.
 

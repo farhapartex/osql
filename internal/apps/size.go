@@ -5,58 +5,22 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"sync"
 
 	"github.com/farhapartex/osql/internal/engine"
 )
 
-const sizeWorkers = 4
-
-type Sizer struct {
-	workers int
-}
+type Sizer struct{}
 
 func NewSizer() *Sizer {
-	return &Sizer{workers: sizeWorkers}
+	return &Sizer{}
 }
 
 func (s *Sizer) Sizes(ctx context.Context, list []engine.App) error {
-	workers := s.workers
-	if workers < 1 {
-		workers = 1
-	}
-	if workers > len(list) {
-		workers = len(list)
-	}
-
-	next := make(chan int)
-	var wg sync.WaitGroup
-
-	for range workers {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for i := range next {
-				size, ok := measure(ctx, list[i].Path)
-				list[i].Size = size
-				list[i].SizeKnown = ok
-			}
-		}()
-	}
-
-	for i := range list {
-		select {
-		case <-ctx.Done():
-			close(next)
-			wg.Wait()
-			return ctx.Err()
-		case next <- i:
-		}
-	}
-	close(next)
-	wg.Wait()
-
-	return ctx.Err()
+	return engine.InParallel(ctx, len(list), func(i int) {
+		size, ok := measure(ctx, list[i].Path)
+		list[i].Size = size
+		list[i].SizeKnown = ok
+	})
 }
 
 func measure(ctx context.Context, root string) (int64, bool) {

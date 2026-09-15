@@ -78,6 +78,8 @@ const (
 	KindUnsortableField
 	KindAppsNotSortable
 	KindCountTakesNoSort
+	KindFilesAlreadyHaveSize
+	KindSortNeedsMeasuring
 )
 
 var kindNames = map[Kind]string{
@@ -150,6 +152,8 @@ var kindNames = map[Kind]string{
 	KindUnsortableField:           "unsortable_field",
 	KindAppsNotSortable:           "apps_not_sortable",
 	KindCountTakesNoSort:          "count_takes_no_sort",
+	KindFilesAlreadyHaveSize:      "files_already_have_size",
+	KindSortNeedsMeasuring:        "sort_needs_measuring",
 }
 
 func (k Kind) String() string {
@@ -380,9 +384,9 @@ func FieldNotForTarget(field, target string, usable []string) *Error {
 
 func WithNeedsSize(got string) *Error {
 	if got == "" {
-		return newError(KindWithNeedsSize, "\"with\" needs \"size\" — for example: apps with size")
+		return newError(KindWithNeedsSize, "\"with\" needs \"size\" — for example: folders from 'Documents' with size")
 	}
-	return newError(KindWithNeedsSize, "After \"apps with\" I only know \"size\", not \"%s\".", got)
+	return newError(KindWithNeedsSize, "After \"with\" I only know \"size\", not \"%s\".", got)
 }
 
 func CountHasNoSize() *Error {
@@ -516,6 +520,14 @@ func AppsNotSortable() *Error {
 
 func CountTakesNoSort() *Error {
 	return newError(KindCountTakesNoSort, "A count is one number, so there is nothing to sort. Drop the sort, or ask for the rows instead: files from 'Documents' sorted by size desc")
+}
+
+func FilesAlreadyHaveSize() *Error {
+	return newError(KindFilesAlreadyHaveSize, "Files already show their size, so \"with size\" adds nothing. It is for folders, which have to be added up: folders from 'Documents' with size")
+}
+
+func SortNeedsMeasuring(field string) *Error {
+	return newError(KindSortNeedsMeasuring, "To sort folders by %s I have to measure them first. Add \"with size\": folders from 'Documents' with size sorted by %s desc", field, field)
 }
 
 func joinWithAnd(items []string) string {
