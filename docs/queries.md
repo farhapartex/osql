@@ -20,6 +20,9 @@ drop it.
 - [Moving around](#moving-around)
 - [Looking inside subfolders](#looking-inside-subfolders)
 - [Folders that are skipped](#folders-that-are-skipped)
+- [How big is a folder](#how-big-is-a-folder)
+- [Putting results in order](#putting-results-in-order)
+- [Asking for only the first few](#asking-for-only-the-first-few)
 - [Small conveniences](#small-conveniences)
 - [Special characters in quotes](#special-characters-in-quotes)
 
@@ -125,6 +128,118 @@ Hidden files like `.gitignore` **are** shown — only these folders are skipped.
 
 [`delete`](deleting.md) is the one command that does *not* skip them, so it can
 never tell you a folder is empty while files remain inside.
+
+## How big is a folder
+
+Folders show `—` in the SIZE column, because a folder has no size of its own —
+it is whatever is inside it. Add `with size` and osql adds it up:
+
+```bash
+folders from '~' with size
+```
+
+```
+NAME         TYPE    SIZE      MODIFIED
+Documents    folder  4.2 GB    2026-03-01 09:12
+Downloads    folder  18.7 GB   2026-03-02 14:21
+Pictures     folder  61.3 GB   2026-02-11 08:40
+
+3 files
+```
+
+It goes after the path and before `where`, the same place it goes for
+[apps](apps.md).
+
+This is the one query that asks osql to do real work: adding up a folder means
+walking everything inside it. That is why it is something you ask for rather
+than something you always get — a plain `folders from '~'` stays instant.
+
+Put together with sorting, this answers the question people actually have:
+
+```bash
+folders from '~' with size sorted by size desc limit 10
+```
+
+That is "the ten biggest folders in my home directory".
+
+Sorting folders by size needs `with size`, because until they are measured there
+is nothing to sort. osql says so if you forget.
+
+A folder osql cannot fully read keeps its `—` rather than reporting a total it
+does not know, and it is left out of the count.
+
+## Putting results in order
+
+`sorted by` orders the results. Ascending is the default; add `desc` to reverse
+it:
+
+```bash
+files from 'Downloads' sorted by size desc
+files from 'Documents' sorted by modified desc
+files from 'src' sorted by name
+```
+
+You can sort by `name`, `type`, `size` and `modified`. `size` is for files, so
+sorting folders by it does not work yet. Files with the same value are ordered
+by name, so the same query always gives the same output.
+
+It goes after `where` and before `limit`. The two together answer the question
+people actually ask:
+
+```bash
+files from '~' recursive sorted by size desc limit 20
+```
+
+That is "the twenty biggest files anywhere under my home folder".
+
+### Sorting looks at everything
+
+Without a sort, `limit 20` stops the search at the twentieth match. **With a
+sort it cannot**, because the biggest file might be the last one found. So a
+sorted query always searches the whole folder, and the limit decides how many of
+the results you keep rather than when to stop looking.
+
+That costs time on a big folder, but the answer is exact: `limit 20` with a sort
+really is the top twenty, not the first twenty that turned up.
+
+If you sort **without** a limit, osql holds up to 10,000 results. Past that it
+says so:
+
+```
+Sorted the first 10000 matches. Add a limit to be sure you are seeing the top.
+```
+
+The rows you get are still genuinely the top ones — only the tail is missing.
+
+## Asking for only the first few
+
+`limit` stops after a set number of results:
+
+```bash
+files from 'Downloads' limit 10
+files from '~' recursive where size > 100mb limit 20
+```
+
+It goes at the end, after `recursive` and after `where`.
+
+This is not just tidier output — **osql stops looking as soon as it has
+enough.** On a large folder `limit 10` finishes almost immediately, because the
+search ends at the tenth match instead of reading everything and then throwing
+most of it away.
+
+When the limit is what stopped the search, osql says so, since there may be
+more:
+
+```
+10 files
+Showing the first 10. Raise the limit to see more.
+```
+
+If fewer results than the limit come back, that line does not appear, so you
+know you are seeing everything.
+
+A limit needs to be 1 or more, and it does not go with `count(...)` — a count is
+already a single number, so limiting it would change nothing.
 
 ## Small conveniences
 

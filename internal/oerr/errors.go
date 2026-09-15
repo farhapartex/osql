@@ -65,6 +65,21 @@ const (
 	KindInstalledByPackageManager
 	KindCannotRemoveBinary
 	KindCannotRemoveData
+	KindQueryStopped
+	KindBadSizeValue
+	KindSizeTooLarge
+	KindBadTimeValue
+	KindMissingLimit
+	KindBadLimit
+	KindLimitTooSmall
+	KindCountTakesNoLimit
+	KindMissingSortBy
+	KindMissingSortField
+	KindUnsortableField
+	KindAppsNotSortable
+	KindCountTakesNoSort
+	KindFilesAlreadyHaveSize
+	KindSortNeedsMeasuring
 )
 
 var kindNames = map[Kind]string{
@@ -124,6 +139,21 @@ var kindNames = map[Kind]string{
 	KindInstalledByPackageManager: "installed_by_package_manager",
 	KindCannotRemoveBinary:        "cannot_remove_binary",
 	KindCannotRemoveData:          "cannot_remove_data",
+	KindQueryStopped:              "query_stopped",
+	KindBadSizeValue:              "bad_size_value",
+	KindSizeTooLarge:              "size_too_large",
+	KindBadTimeValue:              "bad_time_value",
+	KindMissingLimit:              "missing_limit",
+	KindBadLimit:                  "bad_limit",
+	KindLimitTooSmall:             "limit_too_small",
+	KindCountTakesNoLimit:         "count_takes_no_limit",
+	KindMissingSortBy:             "missing_sort_by",
+	KindMissingSortField:          "missing_sort_field",
+	KindUnsortableField:           "unsortable_field",
+	KindAppsNotSortable:           "apps_not_sortable",
+	KindCountTakesNoSort:          "count_takes_no_sort",
+	KindFilesAlreadyHaveSize:      "files_already_have_size",
+	KindSortNeedsMeasuring:        "sort_needs_measuring",
 }
 
 func (k Kind) String() string {
@@ -354,9 +384,9 @@ func FieldNotForTarget(field, target string, usable []string) *Error {
 
 func WithNeedsSize(got string) *Error {
 	if got == "" {
-		return newError(KindWithNeedsSize, "\"with\" needs \"size\" — for example: apps with size")
+		return newError(KindWithNeedsSize, "\"with\" needs \"size\" — for example: folders from 'Documents' with size")
 	}
-	return newError(KindWithNeedsSize, "After \"apps with\" I only know \"size\", not \"%s\".", got)
+	return newError(KindWithNeedsSize, "After \"with\" I only know \"size\", not \"%s\".", got)
 }
 
 func CountHasNoSize() *Error {
@@ -426,6 +456,78 @@ func Reason(err error) string {
 	default:
 		return err.Error()
 	}
+}
+
+func QueryStopped(found, scanned int) *Error {
+	if found > 0 {
+		return newError(KindQueryStopped, "Stopped after %d matches. Narrow the folder or add a where clause to make it quicker.", found)
+	}
+	if scanned > 0 {
+		return newError(KindQueryStopped, "Stopped after looking at %d items, none of which matched. Narrow the folder to make it quicker.", scanned)
+	}
+	return newError(KindQueryStopped, "Stopped. Nothing had matched yet.")
+}
+
+func BadSizeValue(got string) *Error {
+	return newError(KindBadSizeValue, "I don't understand the size %q. Write a number with an optional unit — for example: size > 10mb", got)
+}
+
+func SizeTooLarge(got string) *Error {
+	return newError(KindSizeTooLarge, "%q is a bigger number than I can work with. The largest size I understand is about 8000000tb.", got)
+}
+
+func BadTimeValue(got string) *Error {
+	return newError(KindBadTimeValue, "I don't understand the date %q. Try a date like '2026-01-31', or something like 'today', 'yesterday', or '7 days ago'.", got)
+}
+
+func MissingLimit() *Error {
+	return newError(KindMissingLimit, "\"limit\" needs a number — for example: files from 'Documents' limit 10")
+}
+
+func BadLimit(got string) *Error {
+	return newError(KindBadLimit, "\"limit\" needs a whole number, not %q — for example: limit 10", got)
+}
+
+func LimitTooSmall(got int) *Error {
+	return newError(KindLimitTooSmall, "A limit of %d would show nothing. Use 1 or more, or leave the limit off to see everything.", got)
+}
+
+func CountTakesNoLimit() *Error {
+	return newError(KindCountTakesNoLimit, "A count is already one number, so a limit would change nothing. Drop the limit, or ask for the rows instead: files from 'Documents' limit 10")
+}
+
+func MissingSortBy(got string) *Error {
+	if got == "" {
+		return newError(KindMissingSortBy, "\"sorted\" needs \"by\" and a field — for example: files from 'Documents' sorted by size desc")
+	}
+	return newError(KindMissingSortBy, "I need \"by\" after \"sorted\", not %q — for example: sorted by size desc", got)
+}
+
+func MissingSortField() *Error {
+	return newError(KindMissingSortField, "\"sorted by\" needs a field — for example: sorted by size desc")
+}
+
+func UnsortableField(got string, known []string) *Error {
+	if len(known) == 0 {
+		return newError(KindUnsortableField, "I can't sort by %q.", got)
+	}
+	return newError(KindUnsortableField, "I can't sort by %q. I can sort by %s.", got, joinWithAnd(known))
+}
+
+func AppsNotSortable() *Error {
+	return newError(KindAppsNotSortable, "I can't sort apps yet. Ask for them unsorted with \"apps\", or sort files and folders instead.")
+}
+
+func CountTakesNoSort() *Error {
+	return newError(KindCountTakesNoSort, "A count is one number, so there is nothing to sort. Drop the sort, or ask for the rows instead: files from 'Documents' sorted by size desc")
+}
+
+func FilesAlreadyHaveSize() *Error {
+	return newError(KindFilesAlreadyHaveSize, "Files already show their size, so \"with size\" adds nothing. It is for folders, which have to be added up: folders from 'Documents' with size")
+}
+
+func SortNeedsMeasuring(field string) *Error {
+	return newError(KindSortNeedsMeasuring, "To sort folders by %s I have to measure them first. Add \"with size\": folders from 'Documents' with size sorted by %s desc", field, field)
 }
 
 func joinWithAnd(items []string) string {

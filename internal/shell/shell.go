@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"strings"
+	"sync"
 
 	"github.com/farhapartex/osql/internal/buildinfo"
 	"github.com/farhapartex/osql/internal/engine"
@@ -32,6 +34,9 @@ var (
 type Shell struct {
 	cfg      Config
 	builtins *BuiltinRegistry
+
+	mu          sync.Mutex
+	stopRunning context.CancelFunc
 }
 
 func New(cfg Config) *Shell {
@@ -107,6 +112,42 @@ func (s *Shell) Run() error {
 	}
 }
 
+func (s *Shell) beginQuery() context.Context {
+	ctx, cancel := context.WithCancel(context.Background())
+	s.mu.Lock()
+	s.stopRunning = cancel
+	s.mu.Unlock()
+	return ctx
+}
+
+func (s *Shell) endQuery() {
+	s.mu.Lock()
+	stop := s.stopRunning
+	s.stopRunning = nil
+	s.mu.Unlock()
+	if stop != nil {
+		stop()
+	}
+}
+
+func (s *Shell) Interrupt() bool {
+	s.mu.Lock()
+	stop := s.stopRunning
+	s.mu.Unlock()
+	if stop == nil {
+		return false
+	}
+	stop()
+	return true
+}
+
+func stoppedEarly(err error, found, scanned int) error {
+	if errors.Is(err, context.Canceled) {
+		return oerr.QueryStopped(found, scanned)
+	}
+	return err
+}
+
 func (s *Shell) runQuery(line string) error {
 	if s.cfg.Lexer == nil || s.cfg.Parser == nil || s.cfg.Engine == nil {
 		return errNoPipeline
@@ -132,16 +173,24 @@ func (s *Shell) runQuery(line string) error {
 		return oerr.UnknownVerb(stmt.Verb, s.KnownWords())
 	}
 
-	ctx := context.Background()
+	ctx := s.beginQuery()
+	defer s.endQuery()
+
+	progress := &scanProgress{}
+	if s.cfg.Editing {
+		progress.out = s.cfg.Err
+	}
+	ctx = engine.WithProgress(ctx, progress.report)
+	defer progress.erase()
 
 	if deleter, ok := executor.(engine.Deleter); ok {
-		return s.runDelete(ctx, deleter, stmt)
+		return s.runDelete(ctx, deleter, stmt, progress)
 	}
 
 	if summarizer, ok := executor.(engine.AppSummarizer); ok && stmt.Verb == query.VerbSummary {
 		summary, err := summarizer.SummarizeApps(ctx, stmt)
 		if err != nil {
-			return err
+			return stoppedEarly(err, 0, progress.scanned)
 		}
 		return s.cfg.AppSummary.Render(s.cfg.Out, summary)
 	}
@@ -149,7 +198,7 @@ func (s *Shell) runQuery(line string) error {
 	if lister, ok := executor.(engine.AppLister); ok && stmt.Verb != query.VerbCount {
 		report, err := lister.ListApps(ctx, stmt)
 		if err != nil {
-			return err
+			return stoppedEarly(err, 0, progress.scanned)
 		}
 		if len(report.Apps) == 0 {
 			if len(stmt.Predicates) == 0 {
@@ -165,25 +214,70 @@ func (s *Shell) runQuery(line string) error {
 	if summarizer, ok := executor.(engine.Summarizer); ok {
 		summary, err := summarizer.Summarize(ctx, stmt)
 		if err != nil {
-			return err
+			return stoppedEarly(err, 0, progress.scanned)
 		}
 		return s.cfg.Summary.Render(s.cfg.Out, summary)
 	}
 
 	if content, ok := executor.(engine.ContentExecutor); ok {
-		return content.WriteContent(ctx, stmt, s.cfg.Out)
+		return stoppedEarly(content.WriteContent(ctx, stmt, s.cfg.Out), 0, progress.scanned)
 	}
 
 	sink := &engine.SliceSink{}
-	if err := executor.Execute(ctx, stmt, sink); err != nil {
-		return err
+	var out engine.RowSink = sink
+	var limited *engine.LimitSink
+	var sorted *engine.SortSink
+
+	if stmt.SortField != "" {
+		field, ok := s.sortableField(stmt.SortField)
+		if !ok {
+			return oerr.UnsortableField(stmt.SortField, nil)
+		}
+		sorted = engine.NewSortSink(field, stmt.SortDesc, stmt.Limit)
+	}
+
+	switch {
+	case stmt.WithSize:
+		out = sink
+	case sorted != nil:
+		out = sorted
+	case stmt.Limit > 0:
+		limited = engine.NewLimitSink(sink, stmt.Limit)
+		out = limited
+	}
+
+	if err := executor.Execute(ctx, stmt, out); err != nil {
+		return stoppedEarly(err, len(sink.Rows), progress.scanned)
+	}
+
+	rows := sink.Rows
+	trimmed := false
+
+	if stmt.WithSize {
+		if err := s.measureFolders(ctx, stmt, rows); err != nil {
+			return stoppedEarly(err, len(rows), progress.scanned)
+		}
+		switch {
+		case sorted != nil:
+			for _, row := range rows {
+				if err := sorted.Push(row); err != nil {
+					return err
+				}
+			}
+			rows = sorted.Rows()
+		case stmt.Limit > 0 && len(rows) > stmt.Limit:
+			rows = rows[:stmt.Limit]
+			trimmed = true
+		}
+	} else if sorted != nil {
+		rows = sorted.Rows()
 	}
 
 	if stmt.Verb == query.VerbCount {
-		return s.cfg.CountRenderer.Render(s.cfg.Out, sink.Rows)
+		return s.cfg.CountRenderer.Render(s.cfg.Out, rows)
 	}
 
-	if len(sink.Rows) == 0 {
+	if len(rows) == 0 {
 		if len(stmt.Predicates) == 0 {
 			fmt.Fprintln(s.cfg.Out, oerr.EmptyFolder(stmt.Path))
 		} else {
@@ -192,13 +286,48 @@ func (s *Shell) runQuery(line string) error {
 		return nil
 	}
 
-	return s.cfg.Renderer.Render(s.cfg.Out, sink.Rows)
+	if err := s.cfg.Renderer.Render(s.cfg.Out, rows); err != nil {
+		return err
+	}
+	if trimmed || (limited != nil && limited.Filled()) {
+		fmt.Fprintln(s.cfg.Out, oerr.LimitReached(stmt.Limit))
+	}
+	if sorted != nil && stmt.Limit == 0 && sorted.Overflowed() {
+		fmt.Fprintln(s.cfg.Out, oerr.SortTruncated(engine.SortCap))
+	}
+	return nil
 }
 
-func (s *Shell) runDelete(ctx context.Context, deleter engine.Deleter, stmt *query.Statement) error {
-	plan, err := deleter.Plan(ctx, stmt)
+func (s *Shell) measureFolders(ctx context.Context, stmt *query.Statement, rows []engine.Row) error {
+	if s.cfg.FolderSizes == nil || s.cfg.Resolver == nil {
+		return nil
+	}
+
+	root, err := s.cfg.Resolver.Resolve(stmt.Path)
 	if err != nil {
 		return err
+	}
+	return s.cfg.FolderSizes.Measure(ctx, rows, func(row engine.Row) string {
+		return path.Join(root.FSPath, row.Name)
+	})
+}
+
+func (s *Shell) sortableField(name string) (engine.SortableField, bool) {
+	if s.cfg.Fields == nil {
+		return nil, false
+	}
+	field, ok := s.cfg.Fields.Lookup(name)
+	if !ok {
+		return nil, false
+	}
+	sortable, ok := field.(engine.SortableField)
+	return sortable, ok
+}
+
+func (s *Shell) runDelete(ctx context.Context, deleter engine.Deleter, stmt *query.Statement, progress *scanProgress) error {
+	plan, err := deleter.Plan(ctx, stmt)
+	if err != nil {
+		return stoppedEarly(err, 0, progress.scanned)
 	}
 	if plan.IsEmpty() {
 		return s.cfg.Delete.Nothing(s.cfg.Out)
@@ -213,7 +342,11 @@ func (s *Shell) runDelete(ctx context.Context, deleter engine.Deleter, stmt *que
 		return s.cfg.Delete.Cancelled(s.cfg.Out)
 	}
 
-	result, err := deleter.Commit(ctx, plan)
+	if ctx.Err() != nil {
+		return s.cfg.Delete.Cancelled(s.cfg.Out)
+	}
+
+	result, err := deleter.Commit(context.WithoutCancel(ctx), plan)
 	if err != nil {
 		return err
 	}

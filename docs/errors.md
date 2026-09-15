@@ -132,27 +132,114 @@ The query stops in the middle. Finish the condition.
 
 ## Filters
 
-**`I don't know the field "extension". I understand: name, name_like, type`**
+**`I don't know the field "extension". I understand: name, name_like, type, size, modified`**
 
 That is not a field you can filter on. The message lists the ones you can, and
-the list depends on what you are asking for — `folders` adds `count(child)`, and
-`apps` offers `version`, `source`, and `id`. For extensions the field is called
-`type`.
+the list depends on what you are asking for — `files` adds `size`, `folders`
+adds `count(child)`, and `apps` offers `version`, `source`, and `id`. For
+extensions the field is called `type`.
 
 ---
 
 **`"type" doesn't work with "apps". There you can filter on name, name_like, version, version_like, source, id, and id_like.`**
 
-The field is real, but not for the thing you asked for. `type` and
+The field is real, but not for the thing you asked for. `type`, `size` and
 `count(child)` describe files and folders; `version`, `source`, and `id`
-describe apps. The message lists what does work.
+describe apps. The message lists what does work. `size` is a file field, so
+`folders … where size > …` is refused for the same reason.
 
 ---
 
 **`"name" only works with = and !=. For patterns use name_like: files from 'Documents' where name_like = '%report%'`**
 
-You used `<`, `>`, or similar on a text field. Those only work on
+You used `<`, `>`, or similar on a text field. Those only work on `size` and
 `count(child)`. For loose name matching use `name_like`.
+
+---
+
+**`I don't understand the size "abc". Write a number with an optional unit — for example: size > 10mb`**
+
+The value after `size` was not a number. Write the number with the unit attached
+— `10mb`, `500kb`, `2gb` — or put it in quotes if you want a space: `'10 mb'`.
+The units are `b`, `kb`, `mb`, `gb` and `tb`.
+
+---
+
+**`I can't sort by "name_like". I can sort by name, type, size, and modified.`**
+
+That field cannot put rows in order. Patterns match, they do not rank, and
+`count(child)` is not carried on a listing row. The message lists what does
+work, and the list depends on what you asked for — `size` is missing for
+`folders`, because folders have no size yet.
+
+---
+
+**`To sort folders by size I have to measure them first. Add "with size": folders from 'Documents' with size sorted by size desc`**
+
+Folders have no size until osql adds up what is inside them, so there is nothing
+to sort by yet. Add `with size` and the sort works.
+
+---
+
+**`Files already show their size, so "with size" adds nothing. It is for folders, which have to be added up: folders from 'Documents' with size`**
+
+Every file already shows its size in the SIZE column. `with size` exists for
+folders, whose size has to be worked out.
+
+---
+
+**`I can't sort apps yet. Ask for them unsorted with "apps", or sort files and folders instead.`**
+
+Sorting works on files and folders. Apps come from a different place and are not
+sortable yet.
+
+---
+
+**`"sorted" needs "by" and a field — for example: files from 'Documents' sorted by size desc`**
+
+The clause is `sorted by <field>`, so `sorted` on its own is incomplete. Add
+`desc` to reverse the order.
+
+---
+
+**`A count is one number, so there is nothing to sort. Drop the sort, or ask for the rows instead: files from 'Documents' sorted by size desc`**
+
+`count(...)` answers with a single number, so ordering it means nothing.
+
+---
+
+**`"limit" needs a whole number, not "abc" — for example: limit 10`**
+
+`limit` takes a plain number and nothing else. `limit 10` works; `limit 2.5` and
+`limit abc` do not.
+
+---
+
+**`A limit of 0 would show nothing. Use 1 or more, or leave the limit off to see everything.`**
+
+A limit has to be at least 1. To see every result, leave the limit off entirely.
+
+---
+
+**`A count is already one number, so a limit would change nothing. Drop the limit, or ask for the rows instead: files from 'Documents' limit 10`**
+
+`count(...)` answers with a single number, so there is nothing for a limit to
+trim. Drop it, or ask for the rows themselves.
+
+---
+
+**`I don't understand the date "someday". Try a date like '2026-01-31', or something like 'today', 'yesterday', or '7 days ago'.`**
+
+The value after `modified` was not a date osql recognises. Write it as
+`2026-01-31`, add a time with `'2026-01-31 14:30'`, or use words: `today`,
+`yesterday`, `7 days ago`, `2 weeks ago`, `3 months ago`, `1 year ago`.
+
+---
+
+**`"99999999tb" is a bigger number than I can work with. The largest size I understand is about 8000000tb.`**
+
+The size is larger than osql can hold in a number. Use a smaller one; no disk is
+that big yet.
 
 ---
 
@@ -267,7 +354,7 @@ osql could not read the folders where apps live.
 
 ---
 
-**`"with" needs "size" — for example: apps with size`**
+**`"with" needs "size" — for example: folders from 'Documents' with size`**
 
 `with` on its own. For apps the only thing that follows it is `size`.
 

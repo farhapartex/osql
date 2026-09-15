@@ -33,6 +33,8 @@ func NewScanner(fsys vfs.FileSystem) *Scanner {
 
 func (s *Scanner) Scan(ctx context.Context, root Resolved, opts ScanOptions, sink RowSink) error {
 	stopped := false
+	report := progressFrom(ctx)
+	scanned := 0
 
 	err := fs.WalkDir(s.fsys, root.FSPath, func(current string, entry fs.DirEntry, walkErr error) error {
 		if ctx.Err() != nil {
@@ -51,6 +53,11 @@ func (s *Scanner) Scan(ctx context.Context, root Resolved, opts ScanOptions, sin
 
 		if current == root.FSPath {
 			return nil
+		}
+
+		scanned++
+		if report != nil && scanned%ProgressInterval == 0 {
+			report(scanned)
 		}
 
 		relative := relativeTo(root.FSPath, current)

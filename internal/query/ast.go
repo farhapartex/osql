@@ -79,4 +79,7 @@ type Statement struct {
 	Permanent      bool
 	Single         bool
 	WithSize       bool
+	Limit          int
+	SortField      string
+	SortDesc       bool
 }

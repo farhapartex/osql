@@ -15,6 +15,9 @@ func (EqualOp) Op() string { return OpEqual }
 
 func (EqualOp) Compare(got, want Value) bool {
 	if got.IsNum && want.IsNum {
+		if want.IsSpan {
+			return got.Number >= want.Number && got.Number < want.Upper
+		}
 		return got.Number == want.Number
 	}
 	return got.Text == want.Text
@@ -47,6 +50,9 @@ func (GreaterOp) Compare(got, want Value) bool {
 	if !got.IsNum || !want.IsNum {
 		return false
 	}
+	if want.IsSpan {
+		return got.Number >= want.Upper
+	}
 	return got.Number > want.Number
 }
 
@@ -57,6 +63,9 @@ func (LessEqualOp) Op() string { return OpLessEqual }
 func (LessEqualOp) Compare(got, want Value) bool {
 	if !got.IsNum || !want.IsNum {
 		return false
+	}
+	if want.IsSpan {
+		return got.Number < want.Upper
 	}
 	return got.Number <= want.Number
 }

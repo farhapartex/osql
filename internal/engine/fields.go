@@ -43,6 +43,10 @@ func (NameField) Extract(e Entry) (Value, error) {
 	return Value{Text: e.Name()}, nil
 }
 
+func (NameField) SortKey(r Row) Value {
+	return Value{Text: strings.ToLower(r.Name)}
+}
+
 type NameLikeField struct{}
 
 func (NameLikeField) Field() string               { return FieldNameLike }
@@ -76,6 +80,13 @@ func (TypeField) Extract(e Entry) (Value, error) {
 		return Value{Text: TypeFolder}, nil
 	}
 	return Value{Text: ExtensionOf(e.DirEntry.Name())}, nil
+}
+
+func (TypeField) SortKey(r Row) Value {
+	if r.IsDir {
+		return Value{Text: TypeFolder}
+	}
+	return Value{Text: r.Ext}
 }
 
 type CountChildField struct {

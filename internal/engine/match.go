@@ -40,6 +40,8 @@ func DefaultFields(fsys vfs.FileSystem) *FieldRegistry {
 		NameField{},
 		NameLikeField{},
 		TypeField{},
+		SizeField{},
+		NewModifiedField(nil),
 		NewCountChildField(fsys),
 		VersionField{},
 		VersionLikeField{},
@@ -168,6 +170,45 @@ func (c *Compiler) fieldsFor(target query.Target) []string {
 		}
 	}
 	return names
+}
+
+func available(field FieldExtractor, target query.Target, measured bool) bool {
+	if field.AppliesTo(target) {
+		return true
+	}
+	needs, ok := field.(MeasuredField)
+	return ok && measured && needs.MeasuredFor(target)
+}
+
+func (c *Compiler) sortableFor(target query.Target, measured bool) []string {
+	names := make([]string, 0, len(c.fields.Names()))
+	for _, name := range c.fields.Names() {
+		field, ok := c.fields.Lookup(name)
+		if !ok || !available(field, target, measured) {
+			continue
+		}
+		if _, sortable := field.(SortableField); sortable {
+			names = append(names, name)
+		}
+	}
+	return names
+}
+
+func (c *Compiler) ValidateSort(name string, target query.Target, measured bool) error {
+	field, ok := c.fields.Lookup(name)
+	if !ok {
+		return oerr.UnsortableField(name, c.sortableFor(target, measured))
+	}
+	if _, sortable := field.(SortableField); !sortable {
+		return oerr.UnsortableField(name, c.sortableFor(target, measured))
+	}
+	if available(field, target, measured) {
+		return nil
+	}
+	if needs, ok := field.(MeasuredField); ok && needs.MeasuredFor(target) {
+		return oerr.SortNeedsMeasuring(name)
+	}
+	return oerr.UnsortableField(name, c.sortableFor(target, measured))
 }
 
 func (c *Compiler) Validate(p query.Predicate, target query.Target) error {

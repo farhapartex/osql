@@ -1,6 +1,7 @@
 package query
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/farhapartex/osql/internal/oerr"
@@ -26,16 +27,25 @@ const (
 	KeywordAnd       = "and"
 	KeywordCount     = "count"
 	KeywordChild     = "child"
+	KeywordLimit     = "limit"
+	KeywordSorted    = "sorted"
+	KeywordBy        = "by"
+	KeywordAsc       = "asc"
+	KeywordDesc      = "desc"
 )
 
 var singularTargets = []string{"file", "folder"}
 
 var targetNamesInOrder = []string{"all", "files", "folders", "apps"}
 
-var structuralKeywords = []string{KeywordFrom, KeywordRecursive, KeywordWhere, KeywordAnd}
+var structuralKeywords = []string{KeywordFrom, KeywordRecursive, KeywordWhere, KeywordAnd, KeywordSorted, KeywordLimit}
 
 type PredicateValidator interface {
 	Validate(p Predicate, target Target) error
+}
+
+type SortValidator interface {
+	ValidateSort(field string, target Target, measured bool) error
 }
 
 type stdParser struct {
@@ -155,12 +165,39 @@ func (p stdParser) Parse(tokens []Token) (*Statement, error) {
 		stmt.Recursive = true
 	}
 
+	if c.peek().IsKeyword(KeywordWith) {
+		c.next()
+		if !c.peek().IsKeyword(KeywordSize) {
+			return nil, oerr.WithNeedsSize(c.peek().Value)
+		}
+		c.next()
+		if verb == VerbCount {
+			return nil, oerr.CountHasNoSize()
+		}
+		if target == TargetFiles {
+			return nil, oerr.FilesAlreadyHaveSize()
+		}
+		stmt.WithSize = true
+	}
+
 	if c.peek().IsKeyword(KeywordWhere) {
 		c.next()
 		stmt.Predicates, err = parseCondition(c)
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	if c.peek().IsKeyword(KeywordWith) {
+		return nil, oerr.WithSizeComesFirst()
+	}
+
+	if err := parseSortedBy(c, stmt); err != nil {
+		return nil, err
+	}
+
+	if err := parseLimit(c, stmt); err != nil {
+		return nil, err
 	}
 
 	if !c.atEOF() {
@@ -173,9 +210,74 @@ func (p stdParser) Parse(tokens []Token) (*Statement, error) {
 				return nil, err
 			}
 		}
+		if sorter, ok := p.validator.(SortValidator); ok && stmt.SortField != "" {
+			if err := sorter.ValidateSort(stmt.SortField, target, stmt.WithSize); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	return stmt, nil
+}
+
+func parseSortedBy(c *cursor, stmt *Statement) error {
+	if !c.peek().IsKeyword(KeywordSorted) {
+		return nil
+	}
+	c.next()
+
+	if !c.peek().IsKeyword(KeywordBy) {
+		return oerr.MissingSortBy(c.peek().Value)
+	}
+	c.next()
+
+	field, err := parseField(c)
+	if err != nil || field == "" {
+		return oerr.MissingSortField()
+	}
+
+	if stmt.Verb == VerbCount {
+		return oerr.CountTakesNoSort()
+	}
+	if stmt.Target == TargetApps {
+		return oerr.AppsNotSortable()
+	}
+
+	stmt.SortField = field
+	if c.peek().IsKeyword(KeywordDesc) {
+		c.next()
+		stmt.SortDesc = true
+	} else if c.peek().IsKeyword(KeywordAsc) {
+		c.next()
+	}
+	return nil
+}
+
+func parseLimit(c *cursor, stmt *Statement) error {
+	if !c.peek().IsKeyword(KeywordLimit) {
+		return nil
+	}
+	c.next()
+
+	if c.atEOF() {
+		return oerr.MissingLimit()
+	}
+
+	token := c.peek()
+	count, err := strconv.Atoi(strings.TrimSpace(token.Value))
+	if err != nil {
+		return oerr.BadLimit(token.Value)
+	}
+	if count < 1 {
+		return oerr.LimitTooSmall(count)
+	}
+	c.next()
+
+	if stmt.Verb == VerbCount {
+		return oerr.CountTakesNoLimit()
+	}
+	stmt.Limit = count
+	return nil
 }
 
 func parseSummaryApps(c *cursor) (*Statement, error) {
@@ -227,6 +329,10 @@ func parseAppsTail(c *cursor, verb string) (*Statement, error) {
 
 	if c.peek().IsKeyword(KeywordWith) {
 		return nil, oerr.WithSizeComesFirst()
+	}
+
+	if c.peek().IsKeyword(KeywordSorted) {
+		return nil, oerr.AppsNotSortable()
 	}
 
 	if !c.atEOF() {
